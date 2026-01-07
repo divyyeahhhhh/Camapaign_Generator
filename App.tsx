@@ -12,7 +12,9 @@ import {
   Star,
   ChevronDown,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  BarChart3,
+  User
 } from 'lucide-react';
 import { FEATURES, PROCESS_STEPS, STATS, PRICING_PLANS, TESTIMONIALS, FAQ } from './constants.tsx';
 import { AppView, AuthMode } from './types.ts';
@@ -55,11 +57,11 @@ const StatCounter: React.FC<{ value: string, label: string }> = ({ value, label 
   }, [hasStarted, numericValue]);
 
   return (
-    <div ref={elementRef} className="text-center group">
-      <div className="text-5xl font-black text-[#0F172A] mb-2 group-hover:text-orange-primary transition-colors">
-        {Math.floor(count).toLocaleString()}{suffix}
+    <div ref={elementRef} className="flex flex-col items-center">
+      <div className="text-[44px] font-black text-[#F97316] mb-1">
+        {value.includes('.') ? count.toFixed(1) : Math.floor(count).toLocaleString()}{suffix}
       </div>
-      <div className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">{label}</div>
+      <div className="text-[14px] font-medium text-gray-500">{label}</div>
     </div>
   );
 };
@@ -84,42 +86,52 @@ const Navbar = ({
   }, []);
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-      isScrolled ? 'bg-white/80 backdrop-blur-xl border-b border-gray-100 py-4 shadow-sm' : 'bg-transparent py-8'
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      isScrolled ? 'bg-white/90 backdrop-blur-md border-b border-gray-100 py-4 shadow-sm' : 'bg-transparent py-6'
     }`}>
       <div className="max-w-[1440px] mx-auto px-10 flex justify-between items-center">
-        <div className="flex items-center gap-8 cursor-pointer group" onClick={() => onNavigate(isAuthenticated ? AppView.DASHBOARD : AppView.HOME)}>
-          <BrandLogo className="group-hover:scale-105 transition-transform" />
-          <div className="h-4 w-[1px] bg-gray-200 hidden lg:block"></div>
-          <span className="hidden lg:block text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Institutional Grade AI</span>
+        <div className="flex items-center gap-4 cursor-pointer" onClick={() => onNavigate(AppView.HOME)}>
+          <BrandLogo />
+          <span className="text-[18px] font-bold text-gray-900 border-l border-gray-200 pl-4 h-6 flex items-center">
+            BFSI Campaign Generator
+          </span>
         </div>
         
-        <div className="hidden md:flex items-center gap-10">
-          {!isAuthenticated ? (
-            <>
-              <a href="#features" className="text-sm font-black text-gray-500 hover:text-orange-primary transition-all uppercase tracking-widest">Platform</a>
-              <a href="#pricing" className="text-sm font-black text-gray-500 hover:text-orange-primary transition-all uppercase tracking-widest">Solutions</a>
-              <button onClick={() => onNavigate(AppView.CONTACT_US)} className="text-sm font-black text-gray-500 hover:text-orange-primary transition-all uppercase tracking-widest">Support</button>
-              <div className="w-[1px] h-4 bg-gray-200"></div>
-              <button onClick={onLoginClick} className="text-sm font-black text-[#0F172A] uppercase tracking-widest">Login</button>
-              <button onClick={onSignUpClick} className="px-8 py-3 bg-orange-primary text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-orange-100">Deploy Now</button>
-            </>
-          ) : (
-            <div className="flex items-center gap-8">
-              <button onClick={() => onNavigate(AppView.DASHBOARD)} className={`text-sm font-black uppercase tracking-widest ${currentView === AppView.DASHBOARD ? 'text-orange-primary' : 'text-gray-500'}`}>Workspace</button>
-              <button onClick={() => onNavigate(AppView.CREATE_CAMPAIGN)} className="px-6 py-3 bg-[#0F172A] text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-orange-primary transition-all">New Campaign</button>
+        <div className="flex items-center gap-8">
+          <button onClick={() => onNavigate(AppView.CONTACT_US)} className="text-[15px] font-bold text-gray-800 hover:text-orange-primary transition-colors">
+            Contact Us
+          </button>
+          
+          {isAuthenticated ? (
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => onNavigate(AppView.DASHBOARD)} 
+                className="px-6 py-2 border border-gray-200 rounded-lg font-bold text-[15px] text-gray-800 hover:bg-gray-50 transition-all"
+              >
+                Dashboard
+              </button>
               <div className="relative" ref={profileRef}>
-                <div onClick={() => setIsProfileOpen(!isProfileOpen)} className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center cursor-pointer overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" className="w-full h-full object-cover" alt="Profile" />
-                </div>
+                <button 
+                  onClick={() => setIsProfileOpen(!isProfileOpen)} 
+                  className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 hover:bg-indigo-200 transition-all"
+                >
+                  <User size={20} />
+                </button>
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-4 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                    <button onClick={() => { onManageAccount(); setIsProfileOpen(false); }} className="w-full flex items-center gap-3 p-4 text-xs font-black text-gray-500 hover:bg-gray-50 rounded-xl uppercase tracking-widest transition-colors"><Settings size={16} /> Settings</button>
-                    <button onClick={onLogout} className="w-full flex items-center gap-3 p-4 text-xs font-black text-red-500 hover:bg-red-50 rounded-xl uppercase tracking-widest transition-colors"><LogOut size={16} /> Logout</button>
+                  <div className="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-2 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                    <button onClick={() => { onManageAccount(); setIsProfileOpen(false); }} className="w-full flex items-center gap-3 p-3 text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"><Settings size={16} /> Account Settings</button>
+                    <button onClick={onLogout} className="w-full flex items-center gap-3 p-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors"><LogOut size={16} /> Log Out</button>
                   </div>
                 )}
               </div>
             </div>
+          ) : (
+            <button 
+              onClick={onLoginClick}
+              className="px-6 py-2 border border-gray-200 rounded-lg font-bold text-[15px] text-gray-800 hover:bg-gray-50 transition-all"
+            >
+              Sign In
+            </button>
           )}
         </div>
       </div>
@@ -128,20 +140,20 @@ const Navbar = ({
 };
 
 const Process = () => (
-  <section className="py-32 bg-white">
+  <section className="py-24 bg-[#F8FAFC]">
     <div className="max-w-[1440px] mx-auto px-10">
-      <div className="text-center mb-20">
-        <h2 className="text-[56px] font-black text-[#0F172A] tracking-tighter mb-4">The Logic Cycle</h2>
-        <p className="text-xl text-gray-500 font-medium max-w-2xl mx-auto">Four stages of institutional-grade marketing automation.</p>
+      <div className="text-center mb-16">
+        <h2 className="text-[48px] font-bold text-[#0F172A] mb-4">Simple 4-Step Process</h2>
+        <p className="text-[18px] text-gray-600 font-medium">From data to campaign in just a few clicks</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {PROCESS_STEPS.map((step, i) => (
-          <div key={i} className="relative p-12 bg-gray-50 rounded-[3rem] border border-gray-100 group hover:bg-[#0F172A] transition-all duration-500">
-            <div className="text-[80px] font-black text-orange-primary/10 absolute -top-4 right-8 group-hover:text-orange-primary/20 transition-colors">0{step.number}</div>
-            <div className="relative z-10">
-               <h3 className="text-2xl font-black text-[#0F172A] mb-4 group-hover:text-white transition-colors">{step.title}</h3>
-               <p className="text-gray-500 font-medium group-hover:text-gray-400 transition-colors">{step.desc}</p>
+          <div key={i} className="flex flex-col items-center text-center">
+            <div className="w-[72px] h-[72px] bg-[#F97316] text-white rounded-full flex items-center justify-center text-[28px] font-bold mb-6 shadow-lg shadow-orange-100">
+              {step.number}
             </div>
+            <h3 className="text-[20px] font-bold text-[#0F172A] mb-2">{step.title}</h3>
+            <p className="text-[16px] text-gray-500 font-medium">{step.desc}</p>
           </div>
         ))}
       </div>
@@ -149,8 +161,51 @@ const Process = () => (
   </section>
 );
 
+const Features = () => (
+  <section id="features" className="py-24 bg-white">
+    <div className="max-w-[1440px] mx-auto px-10">
+      <div className="text-center mb-20">
+        <h2 className="text-[48px] font-bold text-[#0F172A] mb-4">
+          Everything You Need for <span className="text-[#F97316]">Compliant Marketing</span>
+        </h2>
+        <p className="text-[18px] text-gray-600 font-medium">Our platform handles the entire workflow from data upload to campaign delivery</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {FEATURES.map((feature, idx) => (
+          <div key={idx} className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col items-start">
+            <div className="w-12 h-12 bg-[#FFF7ED] rounded-lg flex items-center justify-center mb-6">
+              {feature.icon}
+            </div>
+            <h3 className="text-[22px] font-bold text-[#0F172A] mb-3 tracking-tight">{feature.title}</h3>
+            <p className="text-gray-500 leading-relaxed font-medium text-[15px]">{feature.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
+const CallToAction = ({ onClick }: { onClick: () => void }) => (
+  <section className="py-24 bg-white">
+    <div className="max-w-[1100px] mx-auto px-10">
+      <div className="bg-[#F97316] rounded-2xl p-20 text-center flex flex-col items-center shadow-xl">
+        <h2 className="text-[44px] font-bold text-[#0F172A] mb-4">Ready to Transform Your Marketing?</h2>
+        <p className="text-[18px] text-white font-medium mb-12">
+          Join thousands of financial institutions using AI-powered campaign generation
+        </p>
+        <button 
+          onClick={onClick}
+          className="bg-white text-[#0F172A] px-10 py-4 rounded-lg font-bold text-[18px] flex items-center gap-3 hover:bg-gray-50 transition-all shadow-lg"
+        >
+          Get Started Now <Sparkles size={20} className="text-[#F97316]" />
+        </button>
+      </div>
+    </div>
+  </section>
+);
+
 const Pricing = () => (
-  <section id="pricing" className="py-32 bg-white">
+  <section id="pricing" className="py-32 bg-gray-50">
     <div className="max-w-[1440px] mx-auto px-10">
       <div className="text-center mb-20">
         <h2 className="text-[56px] font-black text-[#0F172A] tracking-tighter mb-4">Strategic Tiering</h2>
@@ -158,7 +213,7 @@ const Pricing = () => (
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
         {PRICING_PLANS.map((plan, i) => (
-          <div key={i} className={`p-12 rounded-[3rem] border transition-all ${plan.featured ? 'bg-[#0F172A] border-[#0F172A] text-white shadow-2xl scale-105' : 'bg-gray-50 border-gray-100 text-[#0F172A]'}`}>
+          <div key={i} className={`p-12 rounded-[3rem] border transition-all ${plan.featured ? 'bg-[#0F172A] border-[#0F172A] text-white shadow-2xl scale-105' : 'bg-white border-gray-100 text-[#0F172A]'}`}>
             <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-8 opacity-60">{plan.name}</h3>
             <div className="flex items-baseline gap-1 mb-8">
               <span className="text-5xl font-black">${plan.price}</span>
@@ -281,55 +336,48 @@ const App: React.FC = () => {
       {currentView === AppView.HOME && (
         <div className="animate-in fade-in duration-700">
           {/* Hero Section */}
-          <section className="relative pt-48 pb-32 overflow-hidden bg-white">
+          <section className="relative pt-44 pb-24 overflow-hidden bg-white">
             <div className="max-w-[1440px] mx-auto px-10 text-center relative z-10">
-              <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-orange-50 border border-orange-100 mb-10">
-                <Sparkles size={14} className="text-orange-primary" />
-                <span className="text-[10px] font-black text-orange-primary uppercase tracking-[0.4em]">Next Gen Strategic Engine</span>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-100 border border-gray-200 mb-8">
+                <Sparkles size={14} className="text-gray-600" />
+                <span className="text-[12px] font-bold text-gray-800">Powered by AI</span>
               </div>
-              <h1 className="text-[90px] font-black text-[#0F172A] leading-[0.9] tracking-tighter mb-10 max-w-5xl mx-auto">
-                AI Intelligence for <br/> <span className="text-orange-primary">BFSI Dominance.</span>
+              
+              <h1 className="text-[72px] font-bold text-[#F97316] leading-[1.1] tracking-tight mb-8 max-w-5xl mx-auto">
+                Create Compliant Marketing <br/> Campaigns in Minutes
               </h1>
-              <p className="text-2xl text-gray-500 max-w-2xl mx-auto mb-16 leading-relaxed font-medium">
-                Automate complex marketing synthesis. Reason through compliance datasets. Deploy hyper-personalized financial offers in seconds.
+              
+              <p className="text-[20px] text-[#475569] max-w-3xl mx-auto mb-12 leading-relaxed font-medium">
+                Generate personalized, compliance-checked marketing messages for your BFSI customers using AI. Upload your data, customize your message, and download ready-to-use campaigns.
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-24">
-                <button onClick={handleCreateCampaignRequest} className="px-12 py-6 bg-[#0F172A] text-white rounded-[2rem] font-black text-xl hover:bg-orange-primary hover:scale-105 active:scale-95 transition-all flex items-center gap-4 shadow-2xl shadow-gray-200">
-                  Execute Strategy <ArrowRight size={24} />
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-24">
+                <button 
+                  onClick={handleCreateCampaignRequest} 
+                  className="px-8 py-4 bg-[#F97316] text-white rounded-lg font-bold text-[18px] hover:bg-[#EA580C] transition-all flex items-center gap-3 shadow-lg shadow-orange-200"
+                >
+                  <Sparkles size={20} /> Create Campaign
                 </button>
-                <button onClick={() => {setIsDemoActive(true); setDemoStep(DemoStep.INTRO);}} className="px-12 py-6 bg-white border-2 border-gray-100 text-[#0F172A] rounded-[2rem] font-black text-xl hover:border-black transition-all flex items-center gap-4">
-                  <PlayCircle size={24} className="text-orange-primary" /> View Demo
+                <button 
+                  onClick={() => {setIsDemoActive(true); setDemoStep(DemoStep.INTRO);}} 
+                  className="px-8 py-4 bg-white border border-gray-200 text-[#0F172A] rounded-lg font-bold text-[18px] hover:bg-gray-50 transition-all flex items-center gap-3"
+                >
+                  <BarChart3 size={20} /> View Demo
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-20 py-20 border-t border-gray-50">
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-16 max-w-4xl mx-auto">
                 {STATS.map((stat, idx) => <StatCounter key={idx} value={stat.value} label={stat.label} />)}
               </div>
             </div>
-            {/* Background elements */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-orange-50/50 blur-[100px] rounded-full -z-10 -mt-64"></div>
           </section>
 
-          {/* Features Section */}
-          <section id="features" className="py-32 bg-gray-50/50">
-            <div className="max-w-[1440px] mx-auto px-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {FEATURES.map((feature, idx) => (
-                  <div key={idx} className="bg-white p-12 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group">
-                    <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-orange-primary group-hover:text-white transition-all duration-500">
-                      {feature.icon}
-                    </div>
-                    <h3 className="text-xl font-black text-[#0F172A] mb-4 tracking-tight">{feature.title}</h3>
-                    <p className="text-gray-500 leading-relaxed font-medium text-sm">{feature.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
+          <Features />
           <Process />
           <Testimonials />
           <Pricing />
           <FAQSection />
+          <CallToAction onClick={handleCreateCampaignRequest} />
         </div>
       )}
 

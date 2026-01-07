@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Upload, Cpu, ShieldCheck, Target, CheckCircle, Download, CreditCard, Zap, BarChart3, Globe } from 'lucide-react';
+import { Upload, Sparkles, Shield, Target, CheckCircle, Download, Cpu, ShieldCheck, CreditCard, Zap, BarChart3, Globe } from 'lucide-react';
 
 export const COLORS = {
   primary: '#F97316',
@@ -11,24 +11,34 @@ export const COLORS = {
 
 export const FEATURES = [
   {
-    title: "Precision Data Ingestion",
-    description: "Seamlessly process raw CSV/XLSX audience data. Our engine automatically identifies key demographic levers.",
-    icon: <Upload className="w-6 h-6 text-orange-primary" />
+    title: "Easy CSV Upload",
+    description: "Upload your customer data in CSV format with up to 100 rows at once",
+    icon: <Upload className="w-6 h-6 text-[#F97316]" />
   },
   {
-    title: "Gemini 3 Reasoning",
-    description: "Go beyond simple templates. Our AI reasons through customer financial behavior to craft unique narratives.",
-    icon: <Cpu className="w-6 h-6 text-orange-primary" />
+    title: "AI-Powered Generation",
+    description: "Generate personalized marketing messages using advanced AI technology",
+    icon: <Sparkles className="w-6 h-6 text-[#F97316]" />
   },
   {
-    title: "Compliance-First Logic",
-    description: "Automated BFSI regulation guardrails ensure every word aligns with institutional safety standards.",
-    icon: <ShieldCheck className="w-6 h-6 text-orange-primary" />
+    title: "Compliance First",
+    description: "Automatic compliance checking for BFSI regulations and guidelines",
+    icon: <Shield className="w-6 h-6 text-[#F97316]" />
   },
   {
-    title: "Psychographic Targeting",
-    description: "Leverage deep-learning hooks that align with specific life stages—from college loans to retirement planning.",
-    icon: <Target className="w-6 h-6 text-orange-primary" />
+    title: "Targeted Messaging",
+    description: "Customize tone and audience targeting for maximum engagement",
+    icon: <Target className="w-6 h-6 text-[#F97316]" />
+  },
+  {
+    title: "Review & Approve",
+    description: "Review all generated content before finalizing your campaign",
+    icon: <CheckCircle className="w-6 h-6 text-[#F97316]" />
+  },
+  {
+    title: "Export Results",
+    description: "Download your approved campaigns as CSV or Excel files",
+    icon: <Download className="w-6 h-6 text-[#F97316]" />
   }
 ];
 
@@ -88,16 +98,16 @@ export const FAQ = [
 ];
 
 export const PROCESS_STEPS = [
-  { number: 1, title: "Upload Brief", desc: "Import your audience metadata" },
-  { number: 2, title: "Set Directive", desc: "Define objective and brand tone" },
-  { number: 3, title: "AI Synthesis", desc: "Generate reasoned solutions" },
-  { number: 4, title: "Deploy", desc: "Export compliant assets" }
+  { number: 1, title: "Upload CSV", desc: "Upload your customer data file" },
+  { number: 2, title: "Configure", desc: "Set campaign parameters and tone" },
+  { number: 3, title: "Review", desc: "Review and approve generated content" },
+  { number: 4, title: "Download", desc: "Export your campaign results" }
 ];
 
 export const STATS = [
-  { label: "Solutions Generated", value: "250,000+" },
-  { label: "Safety Accuracy", value: "99.9%" },
-  { label: "Agency Time Saved", value: "92%" }
+  { label: "Campaigns Generated", value: "10,000+" },
+  { label: "Compliance Rate", value: "99.8%" },
+  { label: "Time Saved", value: "85%" }
 ];
 
 export const ANALYTICS_DATA = [
