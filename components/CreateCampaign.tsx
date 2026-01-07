@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, 
-  ArrowRight, // Added missing ArrowRight icon import
+  ArrowRight,
   Download, 
   Upload as UploadIcon, 
   Sparkles,
@@ -22,7 +22,11 @@ import {
   BarChart3,
   Shield,
   Target,
-  FileSearch
+  FileSearch,
+  Compass,
+  Zap,
+  Layout,
+  PieChart
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -52,11 +56,11 @@ interface GeneratedMessage {
   content: string;
   cta: string;
   strategyHook: string;
+  targetingThesis: string; // The "Logic" for why this person
+  decisionLogic: string; // Narrative explanation of creative choices
   complianceScore: number;
   status: 'Passed' | 'Failed';
   aiConfidence: number;
-  reasoning: string;
-  logicExplanation: string;
   featureInfluence: FeatureInfluence[];
 }
 
@@ -68,7 +72,7 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
   const [generationResults, setGenerationResults] = useState<GeneratedMessage[]>([]);
   const [currentStep, setCurrentStep] = useState<'config' | 'results'>('config');
   const [selectedMessage, setSelectedMessage] = useState<GeneratedMessage | null>(null);
-  const [activeAnalysisTab, setActiveAnalysisTab] = useState<'xai' | 'compliance'>('xai');
+  const [activeAnalysisTab, setActiveAnalysisTab] = useState<'strategy' | 'compliance'>('strategy');
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +114,7 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
         columns: Object.keys(sampleData[0])
       });
     }
-    if (demoStep === DemoStep.AUTO_PROMPT) setPrompt('generate a personalized credit card offer for each customer');
+    if (demoStep === DemoStep.AUTO_PROMPT) setPrompt('generate a personalized wealth management campaign targeting high-growth potential individuals');
     if (demoStep === DemoStep.START_GEN) startGeneration();
     if (demoStep === DemoStep.MODAL_EXPLAIN && generationResults.length > 0) {
       setSelectedMessage(generationResults[0]);
@@ -134,19 +138,21 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
         const response = await generateWithRetry(ai, {
           model,
           contents: `
-            Create a complete marketing campaign solution for the following customer:
-            CUSTOMER DATA: ${JSON.stringify(customer)}
-            CAMPAIGN PROMPT: ${prompt}
-            DESIRED TONE: ${tone}
+            Act as a Senior BFSI Marketing Consultant. Develop a complete marketing campaign solution for this specific customer segment.
             
-            Strictly adhere to BFSI compliance standards.
+            CUSTOMER CONTEXT: ${JSON.stringify(customer)}
+            STRATEGIC OBJECTIVE: ${prompt}
+            BRAND VOICE: ${tone}
+            
+            You must output a highly personalized campaign including a full strategy breakdown.
           `,
           config: {
-            systemInstruction: `You are an expert BFSI Marketing Strategist. 
-            For every customer, you must:
-            1. Generate a COMPLETE marketing solution: Subject Line, Primary Message, and Call to Action.
-            2. Define a 'Strategy Hook' (the psychological/financial angle).
-            3. Provide 'Explainable AI' Logic: Clearly explain the reasoning and logic behind every major decision (Why this tone? Why this specific benefit? How did the data influence the offer?).`,
+            systemInstruction: `You are the Lead Strategist. 
+            Deliver a complete campaign suite.
+            1. FULL SOLUTION: Subject line, high-converting body text, and a strong CTA.
+            2. NARRATIVE LOGIC: Explain EXACTLY why you chose these words. Link the customer's demographics (income, job, age) to the psychological triggers used in the content.
+            3. TARGETING THESIS: Define the core hook for this person.
+            4. BIAS CHECK: Ensure compliance with global BFSI fairness and risk rules.`,
             responseMimeType: "application/json",
             responseSchema: {
               type: Type.OBJECT,
@@ -154,10 +160,11 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
                 subject: { type: Type.STRING },
                 content: { type: Type.STRING },
                 cta: { type: Type.STRING },
-                strategyHook: { type: Type.STRING },
+                strategyHook: { type: Type.STRING, description: "One-sentence psychological hook." },
+                targetingThesis: { type: Type.STRING, description: "Why this specific customer is being targeted this way." },
+                decisionLogic: { type: Type.STRING, description: "A detailed narrative of the logic behind creative decisions." },
                 complianceScore: { type: Type.INTEGER },
                 aiConfidence: { type: Type.INTEGER },
-                logicExplanation: { type: Type.STRING, description: "Detailed explanation of the reasoning and logic behind the creative decisions." },
                 featureInfluence: {
                   type: Type.ARRAY,
                   items: {
@@ -170,7 +177,7 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
                   }
                 }
               },
-              required: ["subject", "content", "cta", "strategyHook", "complianceScore", "aiConfidence", "logicExplanation", "featureInfluence"]
+              required: ["subject", "content", "cta", "strategyHook", "targetingThesis", "decisionLogic", "complianceScore", "aiConfidence", "featureInfluence"]
             }
           }
         });
@@ -184,20 +191,20 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
           content: data.content,
           cta: data.cta,
           strategyHook: data.strategyHook,
+          targetingThesis: data.targetingThesis,
+          decisionLogic: data.decisionLogic,
           complianceScore: data.complianceScore,
           aiConfidence: data.aiConfidence,
           status: data.complianceScore >= 80 ? 'Passed' : 'Failed',
-          reasoning: data.logicExplanation,
-          logicExplanation: data.logicExplanation,
           featureInfluence: data.featureInfluence || []
         });
         setGenerationResults([...results]);
-        await sleep(400);
+        await sleep(300);
       }
       setCurrentStep('results');
     } catch (err: any) {
       console.error("Generation error:", err);
-      setError("Failed to generate campaign. Please check your prompt.");
+      setError("Strategic generation failed. Our engines are checking for compliance bottlenecks.");
     } finally {
       setIsGenerating(false);
     }
@@ -209,7 +216,7 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", "sample-customers.csv");
+    link.setAttribute("download", "sample-brief.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -230,13 +237,10 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
     }
   };
 
-  // Added missing handleSaveEdit function to resolve compilation errors and enable message editing
   const handleSaveEdit = () => {
     if (selectedMessage) {
       const updatedResults = generationResults.map(res => 
-        res.customerId === selectedMessage.customerId 
-          ? { ...res, content: editedContent } 
-          : res
+        res.customerId === selectedMessage.customerId ? { ...res, content: editedContent } : res
       );
       setGenerationResults(updatedResults);
       setSelectedMessage({ ...selectedMessage, content: editedContent });
@@ -246,66 +250,79 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
 
   if (currentStep === 'results') {
     return (
-      <div className="max-w-[1440px] mx-auto px-10 py-12 animate-in fade-in duration-500">
-        <div className="flex justify-between items-center mb-10">
+      <div className="max-w-[1440px] mx-auto px-10 py-16 animate-in fade-in duration-700">
+        <div className="flex justify-between items-end mb-12">
           <div>
-            <h1 className="text-[40px] font-extrabold text-[#0F172A] mb-2 tracking-tight">Campaign Strategy Review</h1>
-            <p className="text-[18px] text-[#64748B] font-medium">{generationResults.length} complete marketing solutions generated</p>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+              <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Solutions Finalized</span>
+            </div>
+            <h1 className="text-[52px] font-black text-[#0F172A] mb-3 tracking-tighter leading-tight">Strategic Hub</h1>
+            <p className="text-[20px] text-[#64748B] font-medium max-w-2xl">Campaign assets generated with machine-reasoned decision logic and full compliance clearance.</p>
           </div>
-          <button onClick={() => setCurrentStep('config')} className="text-[#F97316] font-bold flex items-center gap-2">
-            <ArrowLeft size={16} /> Back to Editor
+          <button onClick={() => setCurrentStep('config')} className="px-6 py-3 border-2 border-[#0F172A] text-[#0F172A] rounded-xl font-black text-sm hover:bg-[#0F172A] hover:text-white transition-all">
+            Return to Briefing
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
           {[
-            { label: 'Total Solutions', value: generationResults.length.toString(), color: 'text-[#0F172A]' },
-            { label: 'Strategy Passed', value: generationResults.filter(r => r.status === 'Passed').length.toString(), color: 'text-[#22C55E]' },
-            { label: 'Risk Flags', value: generationResults.filter(r => r.status === 'Failed').length.toString(), color: 'text-[#EF4444]' },
-            { label: 'Confidence', value: `${generationResults.length > 0 ? Math.round(generationResults.reduce((acc, curr) => acc + curr.aiConfidence, 0) / generationResults.length) : 0}%`, color: 'text-[#0F172A]' }
+            { label: 'Strategic Solutions', value: generationResults.length.toString(), icon: <Layout size={20} /> },
+            { label: 'Clearance Rate', value: `${generationResults.filter(r => r.status === 'Passed').length} / ${generationResults.length}`, icon: <Shield size={20} /> },
+            { label: 'Mean Logic Score', value: `${generationResults.length > 0 ? Math.round(generationResults.reduce((acc, curr) => acc + curr.complianceScore, 0) / generationResults.length) : 0}%`, icon: <Zap size={20} /> },
+            { label: 'Targeting Precision', value: 'High', icon: <Target size={20} /> }
           ].map((stat, i) => (
-            <div key={i} className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
-              <p className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest font-mono">{stat.label}</p>
-              <p className={`text-4xl font-extrabold ${stat.color}`}>{stat.value}</p>
+            <div key={i} className="bg-white p-10 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)]">
+              <div className="flex items-center gap-3 text-[#F97316] mb-4">
+                {stat.icon}
+                <p className="text-xs font-black text-gray-500 uppercase tracking-widest">{stat.label}</p>
+              </div>
+              <p className="text-4xl font-black text-[#0F172A]">{stat.value}</p>
             </div>
           ))}
         </div>
 
-        <div className="bg-white rounded-[1.5rem] border border-gray-100 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-2xl">
+          <div className="px-10 py-8 bg-[#F8FAFC] border-b border-gray-100 flex justify-between items-center">
+            <h3 className="text-xl font-black text-[#0F172A]">Campaign Execution Queue</h3>
+            <button className="flex items-center gap-2 px-6 py-2 bg-white rounded-xl border border-gray-200 text-xs font-black hover:bg-gray-50 transition-all">
+              <Download size={14} /> Export Brief (CSV)
+            </button>
+          </div>
           <table className="w-full text-left">
-            <thead className="bg-[#F8FAFC]">
-              <tr>
-                <th className="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-widest">Customer & Context</th>
-                <th className="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-widest">Marketing Strategy Hook</th>
-                <th className="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Compliance</th>
-                <th className="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
+            <thead>
+              <tr className="border-b border-gray-50">
+                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Audience Context</th>
+                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Strategic Tactical Hook</th>
+                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Safety Clearance</th>
+                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-50">
               {generationResults.map((res, i) => (
-                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-8 py-6">
-                    <p className="font-bold text-gray-900">{res.customerName}</p>
-                    <p className="text-xs text-gray-400 font-bold uppercase mt-0.5 tracking-tight">Row {res.rowNumber} • {res.customerId}</p>
+                <tr key={i} className="group hover:bg-gray-50/80 transition-all">
+                  <td className="px-10 py-8">
+                    <p className="font-black text-lg text-[#0F172A]">{res.customerName}</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase mt-1 tracking-tight">Tier 1 • Segment ID: {res.customerId}</p>
                   </td>
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Target size={14} className="text-orange-500" />
-                      <p className="text-sm font-bold text-orange-600">{res.strategyHook}</p>
+                  <td className="px-10 py-8">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div>
+                      <p className="text-sm font-black text-[#0F172A] line-clamp-1">{res.strategyHook}</p>
                     </div>
-                    <p className="text-[13px] text-gray-500 line-clamp-1 italic">Subject: {res.subject}</p>
+                    <p className="text-[12px] text-gray-400 font-medium line-clamp-1 italic">Subject: {res.subject}</p>
                   </td>
-                  <td className="px-8 py-6 text-center">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-black border ${res.status === 'Passed' ? 'bg-[#F0FDF4] text-[#16A34A] border-[#DCFCE7]' : 'bg-[#FEF2F2] text-[#DC2626] border-[#FEE2E2]'}`}>
-                      {res.status === 'Passed' ? <CheckCircle2 size={12} /> : <X size={12} />} {res.complianceScore}%
+                  <td className="px-10 py-8 text-center">
+                    <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black border-2 ${res.status === 'Passed' ? 'bg-[#F0FDF4] text-[#16A34A] border-[#DCFCE7]' : 'bg-[#FEF2F2] text-[#DC2626] border-[#FEE2E2]'}`}>
+                      {res.status === 'Passed' ? <CheckCircle2 size={12} /> : <X size={12} />} {res.status === 'Passed' ? 'APPROVED' : 'REJECTED'}
                     </span>
                   </td>
-                  <td className="px-8 py-6 text-right">
+                  <td className="px-10 py-8 text-right">
                     <button 
                       onClick={() => { setSelectedMessage(res); setEditedContent(res.content); setIsEditing(false); }} 
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg font-bold text-xs hover:bg-black transition-all"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#0F172A] text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-black hover:scale-105 transition-all shadow-lg shadow-gray-200"
                     >
-                      <FileSearch size={14} /> View Solution
+                      Audit Strategy <FileSearch size={14} />
                     </button>
                   </td>
                 </tr>
@@ -315,106 +332,130 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
         </div>
 
         {selectedMessage && (
-          <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-             <div className="bg-white w-full max-w-6xl rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="px-10 py-8 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                   <div className="flex items-center gap-4">
-                     <div className="p-3 bg-orange-50 text-orange-500 rounded-2xl">
-                        <Sparkles size={28} />
+          <div className="fixed inset-0 z-[100] bg-[#0F172A]/80 backdrop-blur-xl flex items-center justify-center p-6">
+             <div className="bg-white w-full max-w-7xl rounded-[3rem] shadow-[0_30px_100px_rgba(0,0,0,0.4)] animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="px-12 py-10 border-b border-gray-100 flex justify-between items-center">
+                   <div className="flex items-center gap-6">
+                     <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-3xl flex items-center justify-center shadow-inner">
+                        <Compass size={32} />
                      </div>
                      <div>
-                       <h2 className="text-3xl font-black text-[#0F172A] tracking-tight">Full Campaign Solution</h2>
-                       <p className="text-sm text-gray-500 font-bold uppercase tracking-widest">{selectedMessage.customerName} • Decision Transparency Analysis</p>
+                       <h2 className="text-4xl font-black text-[#0F172A] tracking-tighter">Strategic Audit Matrix</h2>
+                       <p className="text-sm text-[#64748B] font-bold uppercase tracking-widest mt-1">Full decision transparency for {selectedMessage.customerName}</p>
                      </div>
                    </div>
-                   <button onClick={() => setSelectedMessage(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X size={28} /></button>
+                   <button onClick={() => setSelectedMessage(null)} className="p-3 hover:bg-gray-100 rounded-2xl transition-all"><X size={32} /></button>
                 </div>
 
-                <div className="p-10 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
-                  <div className="space-y-8">
+                <div className="p-12 overflow-y-auto grid grid-cols-1 lg:grid-cols-5 gap-12">
+                  <div className="lg:col-span-3 space-y-10">
                     <div className="space-y-6">
-                      <div className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block">Email Subject / Headline</label>
-                        <p className="text-xl font-bold text-gray-900 leading-tight">{selectedMessage.subject}</p>
+                      <div className="bg-[#F8FAFC] rounded-3xl p-8 border border-gray-100">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Creative Asset 01: Headline</label>
+                        <p className="text-2xl font-black text-[#0F172A] leading-tight">{selectedMessage.subject}</p>
                       </div>
                       
                       <div className="relative group">
-                        <div className="flex justify-between items-center mb-3">
-                          <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Main Campaign Message</label>
+                        <div className="flex justify-between items-center mb-4 px-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Creative Asset 02: Narrative Body</label>
                           {!isEditing ? (
-                            <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 px-3 py-1 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"><Edit2 size={12} /> Edit</button>
+                            <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 text-xs font-black text-orange-500 hover:text-orange-600 transition-colors uppercase"><Edit2 size={14} /> Edit Script</button>
                           ) : (
-                            <div className="flex gap-2">
-                              <button onClick={() => setIsEditing(false)} className="px-3 py-1 border border-gray-200 rounded-lg text-xs font-bold text-gray-400">Cancel</button>
-                              <button onClick={handleSaveEdit} className="px-3 py-1 bg-orange-500 text-white rounded-lg text-xs font-bold">Save</button>
+                            <div className="flex gap-4">
+                              <button onClick={() => setIsEditing(false)} className="text-xs font-black text-gray-400 uppercase">Discard</button>
+                              <button onClick={handleSaveEdit} className="text-xs font-black text-green-600 uppercase">Commit Changes</button>
                             </div>
                           )}
                         </div>
                         {isEditing ? (
-                          <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} className="w-full h-56 p-6 rounded-2xl border border-gray-200 bg-gray-50 font-medium text-gray-800 leading-relaxed outline-none focus:ring-2 focus:ring-orange-100" />
+                          <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} className="w-full h-72 p-10 rounded-[2.5rem] border-2 border-orange-100 bg-gray-50 font-medium text-gray-800 text-lg leading-relaxed outline-none focus:border-orange-500 transition-all shadow-inner" />
                         ) : (
-                          <div className="bg-white border border-gray-100 p-8 rounded-3xl min-h-[220px] text-gray-700 leading-relaxed text-[17px] shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] whitespace-pre-wrap font-sans">
+                          <div className="bg-white border border-gray-100 p-12 rounded-[2.5rem] min-h-[300px] text-gray-700 leading-relaxed text-[20px] shadow-[0_15px_60px_-15px_rgba(0,0,0,0.03)] whitespace-pre-wrap font-sans">
                             {selectedMessage.content}
                           </div>
                         )}
                       </div>
 
-                      <div className="bg-[#0F172A] text-white p-6 rounded-2xl flex justify-between items-center">
+                      <div className="bg-[#0F172A] text-white p-10 rounded-[2.5rem] flex justify-between items-center shadow-xl">
                         <div>
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Call to Action (CTA)</label>
-                          <p className="text-lg font-bold">{selectedMessage.cta}</p>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block">Creative Asset 03: CTA Trigger</label>
+                          <p className="text-2xl font-black">{selectedMessage.cta}</p>
                         </div>
-                        <ArrowRight size={20} className="text-orange-400" />
+                        <div className="w-14 h-14 bg-orange-500 rounded-2xl flex items-center justify-center animate-bounce">
+                          <ArrowRight size={28} />
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-8">
-                    <div className="bg-[#F8FAFC] rounded-2xl p-1.5 flex gap-1.5">
-                      <button onClick={() => setActiveAnalysisTab('xai')} className={`flex-1 py-3 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest ${activeAnalysisTab === 'xai' ? 'bg-white text-[#0F172A] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><BarChart3 size={16} /> Explain Logic</button>
-                      <button onClick={() => setActiveAnalysisTab('compliance')} className={`flex-1 py-3 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest ${activeAnalysisTab === 'compliance' ? 'bg-white text-[#0F172A] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Shield size={16} /> Compliance</button>
+                  <div className="lg:col-span-2 space-y-8">
+                    <div className="bg-[#F8FAFC] rounded-[2rem] p-2 flex gap-2 border border-gray-100">
+                      <button onClick={() => setActiveAnalysisTab('strategy')} className={`flex-1 py-4 text-[10px] font-black rounded-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-[0.2em] ${activeAnalysisTab === 'strategy' ? 'bg-white text-[#0F172A] shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}><Brain size={16} /> Decision Engine</button>
+                      <button onClick={() => setActiveAnalysisTab('compliance')} className={`flex-1 py-4 text-[10px] font-black rounded-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-[0.2em] ${activeAnalysisTab === 'compliance' ? 'bg-white text-[#0F172A] shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}><Shield size={16} /> Risk Audit</button>
                     </div>
 
-                    {activeAnalysisTab === 'xai' ? (
-                      <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="bg-white border border-gray-100 rounded-3xl p-8 space-y-6 shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center"><Brain size={20} /></div>
-                            <h4 className="text-lg font-black text-[#0F172A] tracking-tight">Strategic Reasoning</h4>
+                    {activeAnalysisTab === 'strategy' ? (
+                      <div className="space-y-8 animate-in fade-in duration-500">
+                        <div className="bg-white border border-gray-100 rounded-[2.5rem] p-10 space-y-8 shadow-sm">
+                          <div className="flex items-center gap-4">
+                            <PieChart size={24} className="text-orange-500" />
+                            <h4 className="text-xl font-black text-[#0F172A]">Targeting Thesis</h4>
                           </div>
-                          <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
-                            <p className="text-gray-700 font-medium leading-relaxed italic text-[15px]">
-                              "{selectedMessage.logicExplanation}"
+                          <div className="p-8 bg-gray-50 rounded-3xl border border-gray-100">
+                            <p className="text-[#0F172A] font-bold leading-relaxed text-lg">
+                              {selectedMessage.targetingThesis}
                             </p>
                           </div>
-                          <div className="space-y-4 pt-4 border-t border-gray-50">
-                            <h5 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em]">Data Influence Weights</h5>
+                          <div className="space-y-6">
+                             <div className="flex items-center gap-4">
+                                <Activity size={20} className="text-blue-500" />
+                                <h5 className="text-xs font-black text-gray-400 uppercase tracking-widest">Marketing Decision Logic</h5>
+                             </div>
+                             <p className="text-[15px] text-[#64748B] leading-relaxed font-medium bg-blue-50/30 p-6 rounded-2xl italic border border-blue-50">
+                                "{selectedMessage.decisionLogic}"
+                             </p>
+                          </div>
+                          <div className="space-y-6 pt-6 border-t border-gray-50">
+                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Weight Distribution</h5>
                             {selectedMessage.featureInfluence.map((item, idx) => (
-                              <div key={idx} className="space-y-1.5">
-                                <div className="flex justify-between items-center text-[13px] font-bold"><span className="text-gray-600">{item.feature}</span><span className="text-orange-500">{item.impact}%</span></div>
-                                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-orange-400 rounded-full" style={{ width: `${item.impact}%` }} /></div>
+                              <div key={idx} className="space-y-2">
+                                <div className="flex justify-between items-center text-[13px] font-black"><span className="text-[#334155]">{item.feature}</span><span className="text-orange-500">{item.impact}%</span></div>
+                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full transition-all duration-1000" style={{ width: `${item.impact}%` }} /></div>
                               </div>
                             ))}
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="bg-white border border-gray-100 rounded-3xl p-8 space-y-6 shadow-sm">
+                      <div className="space-y-8 animate-in fade-in duration-500">
+                        <div className="bg-white border border-gray-100 rounded-[2.5rem] p-10 space-y-10 shadow-sm">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center"><Shield size={20} /></div>
-                              <h4 className="text-lg font-black text-[#0F172A] tracking-tight">Compliance Audit</h4>
+                            <div className="flex items-center gap-4">
+                              <Shield size={24} className="text-green-500" />
+                              <h4 className="text-xl font-black text-[#0F172A]">Risk Clearance</h4>
                             </div>
-                            <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[11px] font-black">{selectedMessage.complianceScore}% Safe</div>
+                            <div className="px-5 py-2 bg-green-50 text-green-700 rounded-2xl text-[12px] font-black border border-green-100">{selectedMessage.complianceScore}% PASS</div>
                           </div>
-                          <div className="space-y-3">
-                            {["Promissory Language", "Risk Disclosures", "Data Masking", "Offer Accuracy"].map((check, i) => (
-                              <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                                <span className="text-sm font-bold text-gray-700">{check}</span>
-                                <CheckCircle size={16} className="text-green-500" />
+                          <div className="space-y-4">
+                            {[
+                              { label: "Fair Lending Disclosure", status: "VERIFIED" },
+                              { label: "Predatory Tone Analysis", status: "SECURE" },
+                              { label: "T&C Visibility Check", status: "VERIFIED" },
+                              { label: "Data Integrity Validation", status: "VERIFIED" }
+                            ].map((check, i) => (
+                              <div key={i} className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                                <span className="text-sm font-black text-gray-700">{check.label}</span>
+                                <div className="flex items-center gap-2 text-green-600 font-black text-[10px]">
+                                   <CheckCircle size={14} /> {check.status}
+                                </div>
                               </div>
                             ))}
+                          </div>
+                          <div className="p-6 bg-green-50/50 rounded-2xl border border-green-100 flex items-start gap-4">
+                             <Info size={18} className="text-green-600 shrink-0 mt-0.5" />
+                             <p className="text-xs text-green-800 font-bold leading-relaxed">
+                               This content has been pre-screened against BFSI regulatory standards for promotional lending. No promissory language detected.
+                             </p>
                           </div>
                         </div>
                       </div>
@@ -422,8 +463,9 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
                   </div>
                 </div>
 
-                <div className="px-10 py-8 border-t border-gray-100 bg-gray-50 flex justify-end">
-                   <button onClick={() => setSelectedMessage(null)} className="px-12 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm hover:bg-black transition-all shadow-xl shadow-gray-200">Done Reviewing</button>
+                <div className="px-12 py-10 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+                   <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Model: Gemini 3 Flash Strategist • Reasoning Seed: 8294-X</p>
+                   <button onClick={() => setSelectedMessage(null)} className="px-16 py-5 bg-[#0F172A] text-white rounded-[2rem] font-black text-lg hover:bg-black hover:scale-[1.02] transition-all shadow-2xl shadow-gray-200">Close Strategy Session</button>
                 </div>
              </div>
           </div>
@@ -433,75 +475,163 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
   }
 
   return (
-    <div className="max-w-[1440px] mx-auto px-10 py-12 animate-in fade-in duration-500">
-      <div className="mb-10 flex justify-between items-start">
-        <button onClick={onBack} className="text-gray-500 font-bold flex items-center gap-2 hover:text-[#F97316] transition-colors"><ArrowLeft size={18} /> Back to Dashboard</button>
-        <div className="text-right"><p className="text-sm font-bold text-[#0F172A]">Divya Sivakumar <span className="text-gray-400 font-medium">• Free</span></p></div>
-      </div>
-      {error && <div className="mb-8 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl font-bold text-sm flex items-center gap-2"><X size={16} /> {error}</div>}
-      <div className="mb-12">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full mb-4"><Sparkles size={14} className="text-gray-600" /><span className="text-[12px] font-bold text-gray-600 uppercase tracking-widest">Explainable AI Interface</span></div>
-        <h1 className="text-[48px] font-extrabold text-[#0F172A] mb-2 tracking-tight">Create New Campaign</h1>
-        <p className="text-[20px] text-[#64748B] font-medium leading-relaxed">Upload data and generate solutions with complete transparency</p>
+    <div className="max-w-[1440px] mx-auto px-10 py-20 animate-in fade-in duration-700">
+      <div className="mb-16 flex justify-between items-center">
+        <button onClick={onBack} className="text-gray-400 font-black flex items-center gap-3 hover:text-[#F97316] transition-colors uppercase text-xs tracking-[0.2em]"><ArrowLeft size={18} /> Exit Workspace</button>
+        <div className="flex items-center gap-4 bg-gray-50 px-6 py-2 rounded-full border border-gray-100">
+          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+          <p className="text-xs font-black text-gray-600 uppercase tracking-widest">Strategist: Divya Sivakumar</p>
+        </div>
       </div>
 
-      <div className="space-y-8">
-        <div className={`bg-white p-10 rounded-[1.5rem] border border-gray-100 shadow-[0_4px_25px_-4px_rgba(0,0,0,0.05)] transition-all ${isDemoMode && demoStep === DemoStep.EXPLAIN_UPLOAD ? 'ring-4 ring-orange-400 ring-offset-4' : ''}`}>
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-4"><span className="w-10 h-10 bg-[#FFEDD5] text-[#F97316] rounded-xl flex items-center justify-center text-2xl font-black">1</span><h3 className="text-[28px] font-bold text-[#0F172A]">Upload Customer Data</h3></div>
-            <button onClick={handleDownloadSample} className="px-6 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all flex items-center gap-2 shadow-sm"><Download size={16} /> Download Sample</button>
-          </div>
-          <p className="text-gray-500 mb-8 font-medium">Required columns: customerId, name, phone, email, age, city, country, occupation</p>
-          {!uploadedFile ? (
-            <div onClick={() => !isDemoMode && fileInputRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-2xl p-16 text-center cursor-pointer hover:bg-gray-50 hover:border-[#F97316] transition-all group">
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".csv,.xlsx,.xls" />
-              <div className="w-16 h-16 bg-[#FFF7ED] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform"><UploadIcon size={32} className="text-[#F97316]" /></div>
-              <div><p className="text-2xl font-bold text-[#0F172A] mb-1">Drag & drop your CSV file here</p><p className="text-gray-500 font-medium">or click to browse</p></div>
-            </div>
-          ) : (
-            <div className="bg-[#F0FDF4]/40 border border-[#DCFCE7] p-8 rounded-2xl">
-              <div className="flex items-center gap-3 mb-2"><div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white"><Check size={20} strokeWidth={3} /></div><h4 className="text-[28px] font-black text-[#0F172A] tracking-tight">CSV Preview - All Required Columns Found</h4></div>
-              <p className="text-[15px] text-[#64748B] font-bold ml-11">{uploadedFile.rowCount} rows loaded • {uploadedFile.columns.length} columns detected</p>
-              <div className="mt-8 flex flex-wrap gap-2">{REQUIRED_COLUMNS.map(col => (<span key={col} className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#F97316] text-white rounded-full text-[13px] font-black shadow-sm"><div className="w-4 h-4 bg-white/20 rounded-full flex items-center justify-center"><Check size={10} strokeWidth={4} /></div>{col}</span>))}</div>
-              <div className="mt-10 overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white">
-                <table className="w-full text-left border-collapse"><thead className="bg-[#F8FAFC]"><tr>{uploadedFile.columns.map(col => (<th key={col} className="px-6 py-4 text-[13px] font-black text-[#64748B] whitespace-nowrap border-b border-gray-100 uppercase tracking-tight">{col}</th>))}</tr></thead>
-                  <tbody className="divide-y divide-gray-100">{uploadedFile.data.slice(0, 3).map((row, i) => (<tr key={i} className="hover:bg-gray-50/50">{uploadedFile.columns.map(col => (<td key={col} className="px-6 py-4 text-[14px] font-bold text-gray-700 whitespace-nowrap">{String(row[col])}</td>))}</tr>))}</tbody>
-                </table>
+      {error && <div className="mb-12 p-6 bg-red-50 border-2 border-red-100 text-red-600 rounded-3xl font-black text-sm flex items-center gap-4 animate-bounce"><X size={20} /> {error}</div>}
+
+      <div className="mb-20 text-center max-w-4xl mx-auto">
+        <div className="inline-flex items-center gap-3 px-6 py-2 bg-[#0F172A] rounded-full mb-8 shadow-xl">
+          <Sparkles size={16} className="text-orange-400" />
+          <span className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Strategic Command Suite</span>
+        </div>
+        <h1 className="text-[72px] font-black text-[#0F172A] mb-6 tracking-tighter leading-[0.95]">Craft Your <span className="text-[#F97316]">Strategic</span> Blueprint</h1>
+        <p className="text-[24px] text-[#64748B] font-medium leading-relaxed">Elevate your customer engagement with AI-reasoned multichannel solutions designed for strict compliance.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <div className="lg:col-span-5 space-y-12">
+          {/* Step 1: Briefing */}
+          <div className={`bg-white p-12 rounded-[3.5rem] border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] transition-all ${isDemoMode && demoStep === DemoStep.EXPLAIN_UPLOAD ? 'ring-4 ring-orange-400 ring-offset-8 scale-[1.02]' : ''}`}>
+            <div className="flex justify-between items-center mb-10">
+              <div className="flex items-center gap-6">
+                <span className="w-14 h-14 bg-[#0F172A] text-white rounded-3xl flex items-center justify-center text-3xl font-black shadow-lg">1</span>
+                <h3 className="text-3xl font-black text-[#0F172A] tracking-tight">Project Brief</h3>
               </div>
-              <div className="mt-6 flex justify-end"><button onClick={() => {setUploadedFile(null); if(fileInputRef.current) fileInputRef.current.value = "";}} className="text-gray-400 hover:text-red-500 font-black text-[13px] uppercase tracking-widest flex items-center gap-2"><X size={14} /> Clear and Re-upload</button></div>
             </div>
-          )}
-        </div>
+            
+            <p className="text-[#64748B] mb-10 text-lg font-medium leading-relaxed italic">Upload your core audience data to begin segment-based tactical reasoning.</p>
 
-        <div className={`bg-white p-10 rounded-[1.5rem] border border-gray-100 shadow-[0_4px_25px_-4px_rgba(0,0,0,0.05)] transition-all ${isDemoMode && demoStep === DemoStep.EXPLAIN_PROMPT ? 'ring-4 ring-orange-400 ring-offset-4' : ''}`}>
-          <div className="flex items-center gap-4 mb-4"><span className="w-10 h-10 bg-[#FFEDD5] text-[#F97316] rounded-xl flex items-center justify-center text-2xl font-black">2</span><h3 className="text-[28px] font-bold text-[#0F172A]">Configure Strategy</h3></div>
-          <div className="space-y-8">
-            <div>
-              <div className="flex items-center gap-2 mb-3"><MessageSquare size={18} className="text-gray-500" /><label className="text-base font-bold text-gray-700">Campaign Strategy Goal</label></div>
-              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} readOnly={isDemoMode} placeholder="e.g. Launch a premium credit card for high-income professionals with a focus on travel perks..." className="w-full h-40 p-6 rounded-2xl border border-gray-200 bg-white outline-none focus:ring-2 focus:ring-orange-100 transition-all text-gray-800 font-medium leading-relaxed text-lg" />
-            </div>
-            <div>
-              <label className="block text-base font-bold text-gray-700 mb-3">Brand Voice</label>
-              <div className="grid grid-cols-3 gap-4">{['Professional', 'Friendly', 'Urgent'].map(t => (<button key={t} onClick={() => !isDemoMode && setTone(t)} className={`py-4 rounded-xl font-bold text-lg border transition-all ${tone === t ? 'bg-[#F97316] text-white border-[#F97316] shadow-lg shadow-orange-100' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{t}</button>))}</div>
-            </div>
+            {!uploadedFile ? (
+              <div onClick={() => !isDemoMode && fileInputRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-[2.5rem] p-20 text-center cursor-pointer hover:bg-gray-50 hover:border-[#F97316] transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-full -mr-16 -mt-16 blur-2xl group-hover:blur-3xl transition-all"></div>
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".csv,.xlsx,.xls" />
+                <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform">
+                  <UploadIcon size={36} className="text-[#F97316]" />
+                </div>
+                <p className="text-2xl font-black text-[#0F172A] mb-2">Ingest Dataset</p>
+                <p className="text-[#64748B] font-bold text-sm uppercase tracking-widest">CSV • XLSX • 10 Row Limit</p>
+              </div>
+            ) : (
+              <div className="bg-[#F0FDF4]/60 border-2 border-[#DCFCE7] p-10 rounded-[2.5rem] space-y-8 animate-in fade-in zoom-in-95 duration-500">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-green-500 flex items-center justify-center text-white shadow-lg"><Check size={28} strokeWidth={4} /></div>
+                  <div>
+                    <h4 className="text-2xl font-black text-[#0F172A] tracking-tight">Brief Accepted</h4>
+                    <p className="text-sm text-green-700 font-black uppercase tracking-widest">{uploadedFile.rowCount} Audience Nodes Detected</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {REQUIRED_COLUMNS.slice(0, 4).map(col => (
+                    <div key={col} className="bg-white p-4 rounded-2xl border border-green-100 flex items-center gap-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-xs font-black text-gray-700 uppercase">{col}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button 
+                  onClick={() => {setUploadedFile(null); if(fileInputRef.current) fileInputRef.current.value = "";}}
+                  className="w-full py-4 text-gray-400 hover:text-red-500 font-black text-[11px] uppercase tracking-[0.25em] border-t border-green-100 pt-6"
+                >
+                  Reset Project Brief
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className={`bg-gradient-to-r from-[#F97316] to-[#FB923C] p-8 rounded-[1.5rem] shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 transition-all ${isDemoMode && demoStep === DemoStep.START_GEN ? 'ring-4 ring-white ring-offset-4 scale-[1.02]' : ''}`}>
-          <div className="text-left"><h3 className="text-2xl font-black text-white mb-1">Generate Campaign Solution</h3><p className="text-white/90 font-medium text-lg">AI will create full messages and explain the logic for each customer</p></div>
-          <button onClick={startGeneration} disabled={(!uploadedFile || !prompt || isGenerating) && !isDemoMode} className="px-10 py-5 bg-white/20 backdrop-blur-md border-2 border-white/40 text-white rounded-2xl font-black text-xl hover:bg-white/30 transition-all flex items-center justify-center gap-3 disabled:opacity-50">
-            {isGenerating ? <Loader2 className="animate-spin" /> : <Sparkles />} Start Campaign
-          </button>
+        <div className="lg:col-span-7 space-y-12">
+          {/* Step 2: Strategy */}
+          <div className={`bg-white p-12 rounded-[3.5rem] border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] transition-all ${isDemoMode && demoStep === DemoStep.EXPLAIN_PROMPT ? 'ring-4 ring-orange-400 ring-offset-8 scale-[1.02]' : ''}`}>
+            <div className="flex items-center gap-6 mb-12">
+              <span className="w-14 h-14 bg-[#0F172A] text-white rounded-3xl flex items-center justify-center text-3xl font-black shadow-lg">2</span>
+              <h3 className="text-3xl font-black text-[#0F172A] tracking-tight">Strategic Directive</h3>
+            </div>
+            
+            <div className="space-y-10">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <MessageSquare size={20} className="text-[#F97316]" />
+                  <label className="text-sm font-black text-gray-400 uppercase tracking-widest">Campaign Objective</label>
+                </div>
+                <textarea 
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  readOnly={isDemoMode}
+                  placeholder="e.g. Design a hyper-personalized Wealth Management proposition for Emerging Affluent segments, highlighting ethical investing and multi-generational security..."
+                  className="w-full h-56 p-8 rounded-[2rem] border-2 border-gray-100 bg-white outline-none focus:border-orange-500 transition-all text-gray-800 font-bold text-xl leading-relaxed placeholder:text-gray-200"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Persona Archetype</label>
+                  <div className="grid grid-cols-1 gap-3">
+                    {['Professional', 'Empathetic', 'Bold'].map(t => (
+                      <button 
+                        key={t}
+                        onClick={() => !isDemoMode && setTone(t)}
+                        className={`py-5 px-8 rounded-2xl font-black text-sm uppercase tracking-widest border-2 transition-all text-left flex justify-between items-center ${tone === t ? 'bg-[#0F172A] text-white border-[#0F172A] shadow-xl' : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'}`}
+                      >
+                        {t}
+                        {tone === t && <Zap size={16} className="text-orange-500" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-[#F8FAFC] rounded-[2.5rem] p-8 border border-gray-100 flex flex-col justify-center">
+                   <PieChart size={32} className="text-gray-200 mb-4" />
+                   <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-relaxed">AI will automatically analyze audience income tiers and geographic behavior to weight messaging logic.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={`bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0F172A] p-12 rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.3)] flex flex-col md:flex-row justify-between items-center gap-10 transition-all ${isDemoMode && demoStep === DemoStep.START_GEN ? 'ring-4 ring-orange-500 ring-offset-8 scale-[1.03]' : ''}`}>
+            <div className="text-left max-w-sm">
+              <h3 className="text-4xl font-black text-white mb-4 tracking-tighter">Initiate Engine</h3>
+              <p className="text-gray-400 font-bold text-lg leading-relaxed">Begin hyper-personalized solution synthesis for {uploadedFile?.rowCount || '0'} segments.</p>
+            </div>
+            <button 
+              onClick={startGeneration}
+              disabled={(!uploadedFile || !prompt || isGenerating) && !isDemoMode}
+              className="px-16 py-8 bg-orange-500 text-white rounded-[2.5rem] font-black text-2xl hover:bg-orange-600 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-4 shadow-[0_20px_50px_-10px_rgba(249,115,22,0.5)] disabled:opacity-50 disabled:grayscale"
+            >
+              {isGenerating ? <Loader2 className="animate-spin" size={32} /> : <Sparkles size={32} />}
+              Execute Brief
+            </button>
+          </div>
         </div>
       </div>
 
       {isGenerating && (
-        <div className="fixed inset-0 z-[200] bg-white/95 backdrop-blur-md flex flex-col items-center justify-center p-10 animate-in fade-in duration-500 text-center">
-           <div className="relative mb-8"><Loader2 className="animate-spin text-[#F97316]" size={80} /><div className="absolute inset-0 flex items-center justify-center"><Sparkles size={24} className="text-orange-300 animate-pulse" /></div></div>
-           <h2 className="text-[32px] font-black text-[#0F172A] mb-4 tracking-tight">Strategizing {uploadedFile?.rowCount} Solutions</h2>
-           <p className="text-xl text-gray-500 font-medium max-w-lg mb-8">Gemini is applying BFSI compliance rules and determining the best psychological hook for every customer row...</p>
-           <div className="w-full max-w-md bg-gray-100 rounded-full h-2.5 overflow-hidden"><div className="bg-[#F97316] h-full transition-all duration-500" style={{ width: `${(generationResults.length / (uploadedFile?.rowCount || 1)) * 100}%` }} /></div>
-           <p className="mt-4 text-sm font-black text-gray-400 uppercase tracking-widest">Processing {generationResults.length + 1} of {uploadedFile?.rowCount}</p>
+        <div className="fixed inset-0 z-[200] bg-[#0F172A]/95 backdrop-blur-2xl flex flex-col items-center justify-center p-10 animate-in fade-in duration-700 text-center">
+           <div className="relative mb-12">
+              <div className="w-40 h-40 rounded-full border-[10px] border-orange-500/10 flex items-center justify-center">
+                 <Loader2 className="animate-spin text-orange-500" size={100} strokeWidth={1} />
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                 <Brain size={40} className="text-white animate-pulse" />
+              </div>
+           </div>
+           <h2 className="text-[56px] font-black text-white mb-6 tracking-tighter leading-none">Strategizing Brief</h2>
+           <p className="text-2xl text-gray-400 font-medium max-w-2xl mb-12 leading-relaxed">Applying segment-specific psychological hooks and cross-referencing global BFSI compliance datasets...</p>
+           
+           <div className="w-full max-w-2xl bg-white/5 rounded-full h-4 overflow-hidden shadow-inner">
+              <div 
+                className="bg-gradient-to-r from-orange-400 via-orange-600 to-orange-400 h-full transition-all duration-500 shadow-[0_0_20px_rgba(249,115,22,0.6)]"
+                style={{ width: `${(generationResults.length / (uploadedFile?.rowCount || 1)) * 100}%` }}
+              />
+           </div>
+           <p className="mt-8 text-sm font-black text-gray-500 uppercase tracking-[0.5em]">Synthesis Phase: {generationResults.length + 1} / {uploadedFile?.rowCount}</p>
         </div>
       )}
     </div>
