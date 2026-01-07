@@ -106,14 +106,14 @@ const Navbar = ({
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => onNavigate(AppView.DASHBOARD)} 
-                className="px-6 py-2 border border-gray-200 rounded-lg font-bold text-[15px] text-gray-800 hover:bg-gray-50 transition-all"
+                className={`px-6 py-2 border rounded-lg font-bold text-[15px] transition-all ${currentView === AppView.DASHBOARD ? 'bg-orange-primary text-white border-orange-primary' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'}`}
               >
                 Dashboard
               </button>
               <div className="relative" ref={profileRef}>
                 <button 
                   onClick={() => setIsProfileOpen(!isProfileOpen)} 
-                  className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 hover:bg-indigo-200 transition-all"
+                  className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-[#F97316] hover:bg-orange-200 transition-all"
                 >
                   <User size={20} />
                 </button>
@@ -311,6 +311,7 @@ const App: React.FC = () => {
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
     setAuthMode('landing');
+    // If the user was trying to go somewhere specific (like Create Campaign), take them there immediately
     if (intendedView) {
       setCurrentView(intendedView);
       setIntendedView(null);
@@ -335,7 +336,10 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-white">
       <Navbar 
         isAuthenticated={isAuthenticated}
-        onNavigate={(view: AppView) => view === AppView.CREATE_CAMPAIGN ? handleCreateCampaignRequest() : setCurrentView(view)} 
+        onNavigate={(view: AppView) => {
+          if (view === AppView.CREATE_CAMPAIGN) handleCreateCampaignRequest();
+          else setCurrentView(view);
+        }} 
         onManageAccount={() => setIsAccountModalOpen(true)} 
         onLogout={() => { setIsAuthenticated(false); setCurrentView(AppView.HOME); }}
         onLoginClick={() => setAuthMode('login')}
