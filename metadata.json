@@ -1,0 +1,8 @@
+{
+  "name": "Copy of Copy of BFSI Campaign Generator",
+  "description": "AI-powered compliant marketing campaign generator for Banking, Financial Services, and Insurance sectors by Newgen Digitalworks.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
