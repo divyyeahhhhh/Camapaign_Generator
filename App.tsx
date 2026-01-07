@@ -302,6 +302,7 @@ const App: React.FC = () => {
   const [isDemoActive, setIsDemoActive] = useState(false);
   const [demoStep, setDemoStep] = useState<DemoStep>(DemoStep.IDLE);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [intendedView, setIntendedView] = useState<AppView | null>(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -310,12 +311,21 @@ const App: React.FC = () => {
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
     setAuthMode('landing');
-    setCurrentView(AppView.DASHBOARD);
+    if (intendedView) {
+      setCurrentView(intendedView);
+      setIntendedView(null);
+    } else {
+      setCurrentView(AppView.DASHBOARD);
+    }
   };
 
   const handleCreateCampaignRequest = () => {
-    if (!isAuthenticated) setAuthMode('login');
-    else setCurrentView(AppView.CREATE_CAMPAIGN);
+    if (!isAuthenticated) {
+      setIntendedView(AppView.CREATE_CAMPAIGN);
+      setAuthMode('login');
+    } else {
+      setCurrentView(AppView.CREATE_CAMPAIGN);
+    }
   };
 
   if (!isAuthenticated && authMode === 'login') return <LoginPage onLogin={handleLoginSuccess} onSwitchToSignUp={() => setAuthMode('signup')} onBackToLanding={() => setAuthMode('landing')} />;
