@@ -10,15 +10,12 @@ import {
   X,
   Loader2,
   CheckCircle2,
-  Eye,
-  MessageSquare,
   Edit2,
   Brain,
   Activity,
   CheckCircle,
   Check,
   Info,
-  Layers,
   BarChart3,
   Shield,
   Target,
@@ -26,11 +23,12 @@ import {
   Compass,
   Zap,
   Layout,
-  PieChart
+  PieChart,
+  MessageSquare
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from "@google/genai";
-import { DemoStep } from './DemoTour';
+import { DemoStep } from './DemoTour.tsx';
 
 interface CreateCampaignProps {
   onBack: () => void;
@@ -56,8 +54,8 @@ interface GeneratedMessage {
   content: string;
   cta: string;
   strategyHook: string;
-  targetingThesis: string; // The "Logic" for why this person
-  decisionLogic: string; // Narrative explanation of creative choices
+  targetingThesis: string;
+  decisionLogic: string;
   complianceScore: number;
   status: 'Passed' | 'Failed';
   aiConfidence: number;
@@ -82,22 +80,6 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
   const REQUIRED_COLUMNS = ['customerId', 'name', 'phone', 'email', 'age', 'city', 'country', 'occupation'];
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-  const generateWithRetry = async (ai: any, params: any, retries = 3, delay = 2000) => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        return await ai.models.generateContent(params);
-      } catch (err: any) {
-        if (err.message?.includes('429') && i < retries - 1) {
-          console.warn(`Rate limit hit, retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
-          await sleep(delay);
-          delay *= 2; 
-          continue;
-        }
-        throw err;
-      }
-    }
-  };
 
   useEffect(() => {
     if (!isDemoMode) return;
@@ -128,31 +110,18 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
     
     setError(null);
     setIsGenerating(true);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const model = 'gemini-3-flash-preview';
 
     try {
       const results: GeneratedMessage[] = [];
       for (let i = 0; i < dataToProcess.length; i++) {
         const customer = dataToProcess[i];
-        const response = await generateWithRetry(ai, {
+        const response = await ai.models.generateContent({
           model,
-          contents: `
-            Act as a Senior BFSI Marketing Consultant. Develop a complete marketing campaign solution for this specific customer segment.
-            
-            CUSTOMER CONTEXT: ${JSON.stringify(customer)}
-            STRATEGIC OBJECTIVE: ${prompt}
-            BRAND VOICE: ${tone}
-            
-            You must output a highly personalized campaign including a full strategy breakdown.
-          `,
+          contents: `Act as a Senior BFSI Strategist. DATA: ${JSON.stringify(customer)}, OBJECTIVE: ${prompt}, TONE: ${tone}`,
           config: {
-            systemInstruction: `You are the Lead Strategist. 
-            Deliver a complete campaign suite.
-            1. FULL SOLUTION: Subject line, high-converting body text, and a strong CTA.
-            2. NARRATIVE LOGIC: Explain EXACTLY why you chose these words. Link the customer's demographics (income, job, age) to the psychological triggers used in the content.
-            3. TARGETING THESIS: Define the core hook for this person.
-            4. BIAS CHECK: Ensure compliance with global BFSI fairness and risk rules.`,
+            systemInstruction: "Generate a complete compliant marketing solution with narrative reasoning logic.",
             responseMimeType: "application/json",
             responseSchema: {
               type: Type.OBJECT,
@@ -160,9 +129,9 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
                 subject: { type: Type.STRING },
                 content: { type: Type.STRING },
                 cta: { type: Type.STRING },
-                strategyHook: { type: Type.STRING, description: "One-sentence psychological hook." },
-                targetingThesis: { type: Type.STRING, description: "Why this specific customer is being targeted this way." },
-                decisionLogic: { type: Type.STRING, description: "A detailed narrative of the logic behind creative decisions." },
+                strategyHook: { type: Type.STRING },
+                targetingThesis: { type: Type.STRING },
+                decisionLogic: { type: Type.STRING },
                 complianceScore: { type: Type.INTEGER },
                 aiConfidence: { type: Type.INTEGER },
                 featureInfluence: {
@@ -203,8 +172,7 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
       }
       setCurrentStep('results');
     } catch (err: any) {
-      console.error("Generation error:", err);
-      setError("Strategic generation failed. Our engines are checking for compliance bottlenecks.");
+      setError("Critical Reasoning Failure. Please verify API configuration.");
     } finally {
       setIsGenerating(false);
     }
@@ -216,7 +184,7 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", "sample-brief.csv");
+    link.setAttribute("download", "strategic-brief.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -250,79 +218,67 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
 
   if (currentStep === 'results') {
     return (
-      <div className="max-w-[1440px] mx-auto px-10 py-16 animate-in fade-in duration-700">
-        <div className="flex justify-between items-end mb-12">
+      <div className="max-w-[1440px] mx-auto px-10 py-20 animate-in fade-in duration-700">
+        <div className="flex justify-between items-end mb-16">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
               <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Solutions Finalized</span>
             </div>
-            <h1 className="text-[52px] font-black text-[#0F172A] mb-3 tracking-tighter leading-tight">Strategic Hub</h1>
-            <p className="text-[20px] text-[#64748B] font-medium max-w-2xl">Campaign assets generated with machine-reasoned decision logic and full compliance clearance.</p>
+            <h1 className="text-[64px] font-black text-[#0F172A] mb-4 tracking-tighter leading-none">Strategic Hub</h1>
+            <p className="text-2xl text-gray-500 font-medium max-w-2xl">Audit machine-reasoned creative solutions with full transparency logic.</p>
           </div>
-          <button onClick={() => setCurrentStep('config')} className="px-6 py-3 border-2 border-[#0F172A] text-[#0F172A] rounded-xl font-black text-sm hover:bg-[#0F172A] hover:text-white transition-all">
+          <button onClick={() => setCurrentStep('config')} className="px-10 py-4 border-2 border-[#0F172A] text-[#0F172A] rounded-[1.5rem] font-black text-sm uppercase tracking-widest hover:bg-[#0F172A] hover:text-white transition-all">
             Return to Briefing
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-20">
           {[
-            { label: 'Strategic Solutions', value: generationResults.length.toString(), icon: <Layout size={20} /> },
-            { label: 'Clearance Rate', value: `${generationResults.filter(r => r.status === 'Passed').length} / ${generationResults.length}`, icon: <Shield size={20} /> },
-            { label: 'Mean Logic Score', value: `${generationResults.length > 0 ? Math.round(generationResults.reduce((acc, curr) => acc + curr.complianceScore, 0) / generationResults.length) : 0}%`, icon: <Zap size={20} /> },
-            { label: 'Targeting Precision', value: 'High', icon: <Target size={20} /> }
+            { label: 'Solutions', value: generationResults.length.toString(), icon: <Layout size={20} /> },
+            { label: 'Compliance Pass', value: `${generationResults.filter(r => r.status === 'Passed').length}`, icon: <Shield size={20} /> },
+            { label: 'Avg Logic Score', value: `${generationResults.length > 0 ? Math.round(generationResults.reduce((acc, curr) => acc + curr.complianceScore, 0) / generationResults.length) : 0}%`, icon: <Zap size={20} /> },
+            { label: 'Target Segment', value: 'High Growth', icon: <Target size={20} /> }
           ].map((stat, i) => (
-            <div key={i} className="bg-white p-10 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)]">
-              <div className="flex items-center gap-3 text-[#F97316] mb-4">
+            <div key={i} className="bg-white p-12 rounded-[3rem] border border-gray-100 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)]">
+              <div className="flex items-center gap-3 text-orange-primary mb-6">
                 {stat.icon}
-                <p className="text-xs font-black text-gray-500 uppercase tracking-widest">{stat.label}</p>
+                <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">{stat.label}</p>
               </div>
-              <p className="text-4xl font-black text-[#0F172A]">{stat.value}</p>
+              <p className="text-5xl font-black text-[#0F172A]">{stat.value}</p>
             </div>
           ))}
         </div>
 
-        <div className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-2xl">
-          <div className="px-10 py-8 bg-[#F8FAFC] border-b border-gray-100 flex justify-between items-center">
-            <h3 className="text-xl font-black text-[#0F172A]">Campaign Execution Queue</h3>
-            <button className="flex items-center gap-2 px-6 py-2 bg-white rounded-xl border border-gray-200 text-xs font-black hover:bg-gray-50 transition-all">
-              <Download size={14} /> Export Brief (CSV)
-            </button>
-          </div>
+        <div className="bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-2xl">
           <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-gray-50">
-                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Audience Context</th>
-                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Strategic Tactical Hook</th>
-                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Safety Clearance</th>
-                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-12 py-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Customer Context</th>
+                <th className="px-12 py-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Strategy Hook</th>
+                <th className="px-12 py-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] text-center">Clearance</th>
+                <th className="px-12 py-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {generationResults.map((res, i) => (
-                <tr key={i} className="group hover:bg-gray-50/80 transition-all">
-                  <td className="px-10 py-8">
-                    <p className="font-black text-lg text-[#0F172A]">{res.customerName}</p>
-                    <p className="text-xs text-gray-400 font-bold uppercase mt-1 tracking-tight">Tier 1 • Segment ID: {res.customerId}</p>
+                <tr key={i} className="group hover:bg-gray-50 transition-all">
+                  <td className="px-12 py-10">
+                    <p className="font-black text-xl text-[#0F172A]">{res.customerName}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-widest">{res.customerId}</p>
                   </td>
-                  <td className="px-10 py-8">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div>
-                      <p className="text-sm font-black text-[#0F172A] line-clamp-1">{res.strategyHook}</p>
-                    </div>
-                    <p className="text-[12px] text-gray-400 font-medium line-clamp-1 italic">Subject: {res.subject}</p>
+                  <td className="px-12 py-10">
+                    <p className="text-sm font-black text-[#0F172A] line-clamp-1">{res.strategyHook}</p>
+                    <p className="text-[11px] text-gray-500 font-medium italic mt-1">{res.subject}</p>
                   </td>
-                  <td className="px-10 py-8 text-center">
-                    <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black border-2 ${res.status === 'Passed' ? 'bg-[#F0FDF4] text-[#16A34A] border-[#DCFCE7]' : 'bg-[#FEF2F2] text-[#DC2626] border-[#FEE2E2]'}`}>
-                      {res.status === 'Passed' ? <CheckCircle2 size={12} /> : <X size={12} />} {res.status === 'Passed' ? 'APPROVED' : 'REJECTED'}
+                  <td className="px-12 py-10 text-center">
+                    <span className={`px-5 py-2 rounded-full text-[11px] font-black border-2 ${res.status === 'Passed' ? 'bg-[#F0FDF4] text-[#16A34A] border-[#DCFCE7]' : 'bg-[#FEF2F2] text-[#DC2626] border-[#FEE2E2]'}`}>
+                      {res.status === 'Passed' ? 'APPROVED' : 'REJECTED'}
                     </span>
                   </td>
-                  <td className="px-10 py-8 text-right">
-                    <button 
-                      onClick={() => { setSelectedMessage(res); setEditedContent(res.content); setIsEditing(false); }} 
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#0F172A] text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-black hover:scale-105 transition-all shadow-lg shadow-gray-200"
-                    >
-                      Audit Strategy <FileSearch size={14} />
+                  <td className="px-12 py-10 text-right">
+                    <button onClick={() => { setSelectedMessage(res); setEditedContent(res.content); setIsEditing(false); }} className="px-8 py-4 bg-[#0F172A] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-primary hover:scale-105 transition-all shadow-xl shadow-gray-200">
+                      Audit Strategy
                     </button>
                   </td>
                 </tr>
@@ -332,140 +288,65 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
         </div>
 
         {selectedMessage && (
-          <div className="fixed inset-0 z-[100] bg-[#0F172A]/80 backdrop-blur-xl flex items-center justify-center p-6">
-             <div className="bg-white w-full max-w-7xl rounded-[3rem] shadow-[0_30px_100px_rgba(0,0,0,0.4)] animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="px-12 py-10 border-b border-gray-100 flex justify-between items-center">
-                   <div className="flex items-center gap-6">
+          <div className="fixed inset-0 z-[100] bg-[#0F172A]/90 backdrop-blur-2xl flex items-center justify-center p-8">
+             <div className="bg-white w-full max-w-7xl rounded-[4rem] shadow-2xl animate-in zoom-in-95 duration-500 overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="px-16 py-12 border-b border-gray-100 flex justify-between items-center">
+                   <div className="flex items-center gap-8">
                      <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-3xl flex items-center justify-center shadow-inner">
                         <Compass size={32} />
                      </div>
                      <div>
-                       <h2 className="text-4xl font-black text-[#0F172A] tracking-tighter">Strategic Audit Matrix</h2>
-                       <p className="text-sm text-[#64748B] font-bold uppercase tracking-widest mt-1">Full decision transparency for {selectedMessage.customerName}</p>
+                       <h2 className="text-[40px] font-black text-[#0F172A] tracking-tighter">Strategic Audit Matrix</h2>
+                       <p className="text-xs text-gray-400 font-black uppercase tracking-[0.3em] mt-2">Segment Reasoning for {selectedMessage.customerName}</p>
                      </div>
                    </div>
-                   <button onClick={() => setSelectedMessage(null)} className="p-3 hover:bg-gray-100 rounded-2xl transition-all"><X size={32} /></button>
+                   <button onClick={() => setSelectedMessage(null)} className="p-4 hover:bg-gray-100 rounded-3xl transition-all"><X size={40} /></button>
                 </div>
 
-                <div className="p-12 overflow-y-auto grid grid-cols-1 lg:grid-cols-5 gap-12">
-                  <div className="lg:col-span-3 space-y-10">
-                    <div className="space-y-6">
-                      <div className="bg-[#F8FAFC] rounded-3xl p-8 border border-gray-100">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Creative Asset 01: Headline</label>
-                        <p className="text-2xl font-black text-[#0F172A] leading-tight">{selectedMessage.subject}</p>
+                <div className="p-16 overflow-y-auto grid grid-cols-1 lg:grid-cols-5 gap-16">
+                  <div className="lg:col-span-3 space-y-12">
+                    <div className="bg-[#F8FAFC] rounded-[3rem] p-12 border border-gray-100 shadow-inner">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 block">Asset 01: Headline</label>
+                      <p className="text-3xl font-black text-[#0F172A] leading-none">{selectedMessage.subject}</p>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Asset 02: Strategic Narrative</label>
+                        {!isEditing ? <button onClick={() => setIsEditing(true)} className="text-[10px] font-black text-orange-primary uppercase tracking-widest flex items-center gap-2 hover:scale-110 transition-transform"><Edit2 size={12} /> Edit Draft</button> : <div className="flex gap-4"><button onClick={() => setIsEditing(false)} className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Discard</button><button onClick={handleSaveEdit} className="text-[10px] font-black text-green-600 uppercase tracking-widest">Commit Changes</button></div>}
                       </div>
-                      
-                      <div className="relative group">
-                        <div className="flex justify-between items-center mb-4 px-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Creative Asset 02: Narrative Body</label>
-                          {!isEditing ? (
-                            <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 text-xs font-black text-orange-500 hover:text-orange-600 transition-colors uppercase"><Edit2 size={14} /> Edit Script</button>
-                          ) : (
-                            <div className="flex gap-4">
-                              <button onClick={() => setIsEditing(false)} className="text-xs font-black text-gray-400 uppercase">Discard</button>
-                              <button onClick={handleSaveEdit} className="text-xs font-black text-green-600 uppercase">Commit Changes</button>
-                            </div>
-                          )}
-                        </div>
-                        {isEditing ? (
-                          <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} className="w-full h-72 p-10 rounded-[2.5rem] border-2 border-orange-100 bg-gray-50 font-medium text-gray-800 text-lg leading-relaxed outline-none focus:border-orange-500 transition-all shadow-inner" />
-                        ) : (
-                          <div className="bg-white border border-gray-100 p-12 rounded-[2.5rem] min-h-[300px] text-gray-700 leading-relaxed text-[20px] shadow-[0_15px_60px_-15px_rgba(0,0,0,0.03)] whitespace-pre-wrap font-sans">
-                            {selectedMessage.content}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="bg-[#0F172A] text-white p-10 rounded-[2.5rem] flex justify-between items-center shadow-xl">
-                        <div>
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block">Creative Asset 03: CTA Trigger</label>
-                          <p className="text-2xl font-black">{selectedMessage.cta}</p>
-                        </div>
-                        <div className="w-14 h-14 bg-orange-500 rounded-2xl flex items-center justify-center animate-bounce">
-                          <ArrowRight size={28} />
-                        </div>
-                      </div>
+                      {isEditing ? <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} className="w-full h-80 p-12 rounded-[3rem] border-2 border-orange-100 bg-gray-50 text-xl font-medium text-[#0F172A] leading-relaxed outline-none focus:border-orange-500 transition-all shadow-inner" /> : <div className="bg-white border border-gray-100 p-12 rounded-[3.5rem] min-h-[350px] text-[#0F172A] leading-relaxed text-[20px] shadow-sm whitespace-pre-wrap">{selectedMessage.content}</div>}
                     </div>
                   </div>
-
-                  <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-[#F8FAFC] rounded-[2rem] p-2 flex gap-2 border border-gray-100">
-                      <button onClick={() => setActiveAnalysisTab('strategy')} className={`flex-1 py-4 text-[10px] font-black rounded-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-[0.2em] ${activeAnalysisTab === 'strategy' ? 'bg-white text-[#0F172A] shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}><Brain size={16} /> Decision Engine</button>
-                      <button onClick={() => setActiveAnalysisTab('compliance')} className={`flex-1 py-4 text-[10px] font-black rounded-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-[0.2em] ${activeAnalysisTab === 'compliance' ? 'bg-white text-[#0F172A] shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}><Shield size={16} /> Risk Audit</button>
+                  <div className="lg:col-span-2 space-y-10">
+                    <div className="bg-white border border-gray-100 rounded-[3rem] p-12 space-y-12 shadow-sm">
+                      <div className="flex items-center gap-4">
+                        <Brain size={28} className="text-orange-primary" />
+                        <h4 className="text-2xl font-black text-[#0F172A]">Targeting Thesis</h4>
+                      </div>
+                      <p className="text-lg font-bold text-[#0F172A] leading-relaxed italic bg-orange-50/50 p-8 rounded-[2rem] border border-orange-100">"{selectedMessage.targetingThesis}"</p>
+                      <div className="space-y-6">
+                        <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Decision Matrix Weights</h5>
+                        {selectedMessage.featureInfluence.map((item, idx) => (
+                          <div key={idx} className="space-y-3">
+                            <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest"><span className="text-gray-500">{item.feature}</span><span className="text-orange-primary">{item.impact}%</span></div>
+                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full" style={{ width: `${item.impact}%` }} /></div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-
-                    {activeAnalysisTab === 'strategy' ? (
-                      <div className="space-y-8 animate-in fade-in duration-500">
-                        <div className="bg-white border border-gray-100 rounded-[2.5rem] p-10 space-y-8 shadow-sm">
-                          <div className="flex items-center gap-4">
-                            <PieChart size={24} className="text-orange-500" />
-                            <h4 className="text-xl font-black text-[#0F172A]">Targeting Thesis</h4>
-                          </div>
-                          <div className="p-8 bg-gray-50 rounded-3xl border border-gray-100">
-                            <p className="text-[#0F172A] font-bold leading-relaxed text-lg">
-                              {selectedMessage.targetingThesis}
-                            </p>
-                          </div>
-                          <div className="space-y-6">
-                             <div className="flex items-center gap-4">
-                                <Activity size={20} className="text-blue-500" />
-                                <h5 className="text-xs font-black text-gray-400 uppercase tracking-widest">Marketing Decision Logic</h5>
-                             </div>
-                             <p className="text-[15px] text-[#64748B] leading-relaxed font-medium bg-blue-50/30 p-6 rounded-2xl italic border border-blue-50">
-                                "{selectedMessage.decisionLogic}"
-                             </p>
-                          </div>
-                          <div className="space-y-6 pt-6 border-t border-gray-50">
-                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Weight Distribution</h5>
-                            {selectedMessage.featureInfluence.map((item, idx) => (
-                              <div key={idx} className="space-y-2">
-                                <div className="flex justify-between items-center text-[13px] font-black"><span className="text-[#334155]">{item.feature}</span><span className="text-orange-500">{item.impact}%</span></div>
-                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full transition-all duration-1000" style={{ width: `${item.impact}%` }} /></div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                    <div className="bg-[#0F172A] p-10 rounded-[3rem] text-white flex justify-between items-center group cursor-pointer">
+                      <div>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block">Trigger CTA</label>
+                        <p className="text-2xl font-black group-hover:text-orange-primary transition-colors">{selectedMessage.cta}</p>
                       </div>
-                    ) : (
-                      <div className="space-y-8 animate-in fade-in duration-500">
-                        <div className="bg-white border border-gray-100 rounded-[2.5rem] p-10 space-y-10 shadow-sm">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <Shield size={24} className="text-green-500" />
-                              <h4 className="text-xl font-black text-[#0F172A]">Risk Clearance</h4>
-                            </div>
-                            <div className="px-5 py-2 bg-green-50 text-green-700 rounded-2xl text-[12px] font-black border border-green-100">{selectedMessage.complianceScore}% PASS</div>
-                          </div>
-                          <div className="space-y-4">
-                            {[
-                              { label: "Fair Lending Disclosure", status: "VERIFIED" },
-                              { label: "Predatory Tone Analysis", status: "SECURE" },
-                              { label: "T&C Visibility Check", status: "VERIFIED" },
-                              { label: "Data Integrity Validation", status: "VERIFIED" }
-                            ].map((check, i) => (
-                              <div key={i} className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100">
-                                <span className="text-sm font-black text-gray-700">{check.label}</span>
-                                <div className="flex items-center gap-2 text-green-600 font-black text-[10px]">
-                                   <CheckCircle size={14} /> {check.status}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="p-6 bg-green-50/50 rounded-2xl border border-green-100 flex items-start gap-4">
-                             <Info size={18} className="text-green-600 shrink-0 mt-0.5" />
-                             <p className="text-xs text-green-800 font-bold leading-relaxed">
-                               This content has been pre-screened against BFSI regulatory standards for promotional lending. No promissory language detected.
-                             </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                      <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-orange-primary transition-all"><ArrowRight size={24} /></div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="px-12 py-10 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
-                   <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Model: Gemini 3 Flash Strategist • Reasoning Seed: 8294-X</p>
-                   <button onClick={() => setSelectedMessage(null)} className="px-16 py-5 bg-[#0F172A] text-white rounded-[2rem] font-black text-lg hover:bg-black hover:scale-[1.02] transition-all shadow-2xl shadow-gray-200">Close Strategy Session</button>
+                <div className="px-16 py-12 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Model Index: Gemini 2.5 Flash Strategist</p>
+                   <button onClick={() => setSelectedMessage(null)} className="px-16 py-6 bg-[#0F172A] text-white rounded-[2.5rem] font-black text-xl hover:bg-black hover:scale-[1.02] transition-all shadow-2xl">Finalize Review</button>
                 </div>
              </div>
           </div>
@@ -475,163 +356,121 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
   }
 
   return (
-    <div className="max-w-[1440px] mx-auto px-10 py-20 animate-in fade-in duration-700">
-      <div className="mb-16 flex justify-between items-center">
-        <button onClick={onBack} className="text-gray-400 font-black flex items-center gap-3 hover:text-[#F97316] transition-colors uppercase text-xs tracking-[0.2em]"><ArrowLeft size={18} /> Exit Workspace</button>
-        <div className="flex items-center gap-4 bg-gray-50 px-6 py-2 rounded-full border border-gray-100">
-          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-          <p className="text-xs font-black text-gray-600 uppercase tracking-widest">Strategist: Divya Sivakumar</p>
+    <div className="max-w-[1440px] mx-auto px-10 py-32 animate-in fade-in duration-700">
+      <div className="flex justify-between items-center mb-24">
+        <button onClick={onBack} className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-3 hover:text-orange-primary transition-colors"><ArrowLeft size={20} /> Exit Session</button>
+        <div className="px-6 py-2 bg-gray-50 rounded-full border border-gray-100 flex items-center gap-3">
+          <div className="w-2 h-2 bg-orange-primary rounded-full animate-pulse"></div>
+          <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Active Workspace: Institutional</p>
         </div>
       </div>
 
-      {error && <div className="mb-12 p-6 bg-red-50 border-2 border-red-100 text-red-600 rounded-3xl font-black text-sm flex items-center gap-4 animate-bounce"><X size={20} /> {error}</div>}
-
-      <div className="mb-20 text-center max-w-4xl mx-auto">
-        <div className="inline-flex items-center gap-3 px-6 py-2 bg-[#0F172A] rounded-full mb-8 shadow-xl">
-          <Sparkles size={16} className="text-orange-400" />
-          <span className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Strategic Command Suite</span>
+      <div className="text-center max-w-5xl mx-auto mb-32">
+        <div className="inline-flex items-center gap-3 px-6 py-2 bg-[#0F172A] text-white rounded-full mb-10 shadow-xl">
+          <Zap size={14} className="text-orange-primary" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em]">Strategy Ingestion Interface</span>
         </div>
-        <h1 className="text-[72px] font-black text-[#0F172A] mb-6 tracking-tighter leading-[0.95]">Craft Your <span className="text-[#F97316]">Strategic</span> Blueprint</h1>
-        <p className="text-[24px] text-[#64748B] font-medium leading-relaxed">Elevate your customer engagement with AI-reasoned multichannel solutions designed for strict compliance.</p>
+        <h1 className="text-[96px] font-black text-[#0F172A] leading-[0.85] tracking-tighter mb-10">Deploy Your <span className="text-orange-primary">Intelligence.</span></h1>
+        <p className="text-2xl text-gray-500 font-medium leading-relaxed">Synthesize compliant multichannel solutions with narrative-based reasoning logic.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <div className="lg:col-span-5 space-y-12">
-          {/* Step 1: Briefing */}
-          <div className={`bg-white p-12 rounded-[3.5rem] border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] transition-all ${isDemoMode && demoStep === DemoStep.EXPLAIN_UPLOAD ? 'ring-4 ring-orange-400 ring-offset-8 scale-[1.02]' : ''}`}>
-            <div className="flex justify-between items-center mb-10">
-              <div className="flex items-center gap-6">
-                <span className="w-14 h-14 bg-[#0F172A] text-white rounded-3xl flex items-center justify-center text-3xl font-black shadow-lg">1</span>
-                <h3 className="text-3xl font-black text-[#0F172A] tracking-tight">Project Brief</h3>
-              </div>
-            </div>
-            
-            <p className="text-[#64748B] mb-10 text-lg font-medium leading-relaxed italic">Upload your core audience data to begin segment-based tactical reasoning.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+        <div className="lg:col-span-5">
+          <div className={`bg-white p-16 rounded-[4rem] border border-gray-100 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.08)] transition-all ${isDemoMode && demoStep === DemoStep.EXPLAIN_UPLOAD ? 'ring-8 ring-orange-500/20 scale-[1.02]' : ''}`}>
+             <div className="flex items-center gap-6 mb-12">
+                <span className="w-16 h-16 bg-[#0F172A] text-white rounded-3xl flex items-center justify-center text-3xl font-black">01</span>
+                <h3 className="text-3xl font-black text-[#0F172A] tracking-tighter">Project Brief</h3>
+             </div>
+             <p className="text-lg text-gray-500 font-medium mb-12 leading-relaxed italic">Upload the primary audience dataset to initiate segment-level tactical reasoning.</p>
+             {!uploadedFile ? (
+               <div onClick={() => !isDemoMode && fileInputRef.current?.click()} className="border-4 border-dashed border-gray-100 rounded-[3rem] p-24 text-center cursor-pointer hover:border-orange-primary hover:bg-orange-50/20 transition-all group relative overflow-hidden">
+                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".csv,.xlsx,.xls" />
+                 <div className="w-20 h-20 bg-orange-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform">
+                   <UploadIcon size={36} className="text-orange-primary" />
+                 </div>
+                 <p className="text-3xl font-black text-[#0F172A] mb-2 tracking-tighter">Ingest Dataset</p>
+                 <p className="text-xs font-black text-gray-400 uppercase tracking-widest">CSV • XLSX • 10MB Limit</p>
+               </div>
+             ) : (
+               <div className="bg-green-50 border-2 border-green-100 p-12 rounded-[3.5rem] animate-in zoom-in-95 duration-500">
+                 <div className="flex items-center gap-6 mb-8">
+                   <div className="w-14 h-14 bg-green-500 rounded-3xl flex items-center justify-center text-white shadow-xl"><Check size={32} strokeWidth={4} /></div>
+                   <div>
+                     <h4 className="text-2xl font-black text-[#0F172A] tracking-tighter leading-tight">Brief Accepted</h4>
+                     <p className="text-xs text-green-700 font-black uppercase tracking-widest mt-1">{uploadedFile.rowCount} Audience Nodes Detected</p>
+                   </div>
+                 </div>
+                 <div className="grid grid-cols-2 gap-4 mb-10">
+                   {REQUIRED_COLUMNS.slice(0, 4).map(c => <div key={c} className="bg-white p-4 rounded-2xl border border-green-100 text-[10px] font-black text-gray-700 uppercase tracking-widest">{c}</div>)}
+                 </div>
+                 <button onClick={() => {setUploadedFile(null); if(fileInputRef.current) fileInputRef.current.value="";}} className="w-full py-4 text-gray-400 hover:text-red-500 font-black text-[10px] uppercase tracking-[0.3em] border-t border-green-100 pt-8 transition-colors">Reset Project Brief</button>
+               </div>
+             )}
+          </div>
+        </div>
 
-            {!uploadedFile ? (
-              <div onClick={() => !isDemoMode && fileInputRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-[2.5rem] p-20 text-center cursor-pointer hover:bg-gray-50 hover:border-[#F97316] transition-all group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-full -mr-16 -mt-16 blur-2xl group-hover:blur-3xl transition-all"></div>
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".csv,.xlsx,.xls" />
-                <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform">
-                  <UploadIcon size={36} className="text-[#F97316]" />
-                </div>
-                <p className="text-2xl font-black text-[#0F172A] mb-2">Ingest Dataset</p>
-                <p className="text-[#64748B] font-bold text-sm uppercase tracking-widest">CSV • XLSX • 10 Row Limit</p>
-              </div>
-            ) : (
-              <div className="bg-[#F0FDF4]/60 border-2 border-[#DCFCE7] p-10 rounded-[2.5rem] space-y-8 animate-in fade-in zoom-in-95 duration-500">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-green-500 flex items-center justify-center text-white shadow-lg"><Check size={28} strokeWidth={4} /></div>
-                  <div>
-                    <h4 className="text-2xl font-black text-[#0F172A] tracking-tight">Brief Accepted</h4>
-                    <p className="text-sm text-green-700 font-black uppercase tracking-widest">{uploadedFile.rowCount} Audience Nodes Detected</p>
+        <div className="lg:col-span-7 space-y-16">
+          <div className={`bg-white p-16 rounded-[4rem] border border-gray-100 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.08)] transition-all ${isDemoMode && demoStep === DemoStep.EXPLAIN_PROMPT ? 'ring-8 ring-orange-500/20 scale-[1.02]' : ''}`}>
+             <div className="flex items-center gap-6 mb-16">
+                <span className="w-16 h-16 bg-[#0F172A] text-white rounded-3xl flex items-center justify-center text-3xl font-black">02</span>
+                <h3 className="text-3xl font-black text-[#0F172A] tracking-tighter">Strategic Directive</h3>
+             </div>
+             <div className="space-y-12">
+               <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <MessageSquare size={20} className="text-orange-primary" />
+                    <label className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Campaign Objective</label>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  {REQUIRED_COLUMNS.slice(0, 4).map(col => (
-                    <div key={col} className="bg-white p-4 rounded-2xl border border-green-100 flex items-center gap-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-xs font-black text-gray-700 uppercase">{col}</span>
+                  <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} readOnly={isDemoMode} placeholder="Define the primary objective. e.g. Hyper-personalized Wealth Management proposition for high-growth potential individuals..." className="w-full h-64 p-12 rounded-[3.5rem] border-2 border-gray-100 bg-white outline-none focus:border-orange-primary transition-all text-2xl font-black text-[#0F172A] tracking-tight leading-relaxed placeholder:text-gray-200 shadow-inner" />
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 block">Persona Archetype</label>
+                    <div className="space-y-3">
+                      {['Professional', 'Friendly', 'Bold'].map(t => (
+                        <button key={t} onClick={() => !isDemoMode && setTone(t)} className={`w-full py-6 px-10 rounded-[2rem] border-2 font-black text-xs uppercase tracking-widest text-left flex justify-between items-center transition-all ${tone === t ? 'bg-[#0F172A] text-white border-[#0F172A] shadow-2xl' : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'}`}>
+                          {t} {tone === t && <Zap size={16} className="text-orange-primary" />}
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
-
-                <button 
-                  onClick={() => {setUploadedFile(null); if(fileInputRef.current) fileInputRef.current.value = "";}}
-                  className="w-full py-4 text-gray-400 hover:text-red-500 font-black text-[11px] uppercase tracking-[0.25em] border-t border-green-100 pt-6"
-                >
-                  Reset Project Brief
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="lg:col-span-7 space-y-12">
-          {/* Step 2: Strategy */}
-          <div className={`bg-white p-12 rounded-[3.5rem] border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] transition-all ${isDemoMode && demoStep === DemoStep.EXPLAIN_PROMPT ? 'ring-4 ring-orange-400 ring-offset-8 scale-[1.02]' : ''}`}>
-            <div className="flex items-center gap-6 mb-12">
-              <span className="w-14 h-14 bg-[#0F172A] text-white rounded-3xl flex items-center justify-center text-3xl font-black shadow-lg">2</span>
-              <h3 className="text-3xl font-black text-[#0F172A] tracking-tight">Strategic Directive</h3>
-            </div>
-            
-            <div className="space-y-10">
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <MessageSquare size={20} className="text-[#F97316]" />
-                  <label className="text-sm font-black text-gray-400 uppercase tracking-widest">Campaign Objective</label>
-                </div>
-                <textarea 
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  readOnly={isDemoMode}
-                  placeholder="e.g. Design a hyper-personalized Wealth Management proposition for Emerging Affluent segments, highlighting ethical investing and multi-generational security..."
-                  className="w-full h-56 p-8 rounded-[2rem] border-2 border-gray-100 bg-white outline-none focus:border-orange-500 transition-all text-gray-800 font-bold text-xl leading-relaxed placeholder:text-gray-200"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Persona Archetype</label>
-                  <div className="grid grid-cols-1 gap-3">
-                    {['Professional', 'Empathetic', 'Bold'].map(t => (
-                      <button 
-                        key={t}
-                        onClick={() => !isDemoMode && setTone(t)}
-                        className={`py-5 px-8 rounded-2xl font-black text-sm uppercase tracking-widest border-2 transition-all text-left flex justify-between items-center ${tone === t ? 'bg-[#0F172A] text-white border-[#0F172A] shadow-xl' : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'}`}
-                      >
-                        {t}
-                        {tone === t && <Zap size={16} className="text-orange-500" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-[#F8FAFC] rounded-[2.5rem] p-8 border border-gray-100 flex flex-col justify-center">
-                   <PieChart size={32} className="text-gray-200 mb-4" />
-                   <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-relaxed">AI will automatically analyze audience income tiers and geographic behavior to weight messaging logic.</p>
-                </div>
-              </div>
-            </div>
+                 </div>
+                 <div className="bg-[#F8FAFC] p-10 rounded-[3.5rem] border border-gray-100 flex flex-col justify-center items-center text-center">
+                    <PieChart size={40} className="text-gray-200 mb-6" />
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">Reasoning engine will automatically weight messaging hooks based on demographics.</p>
+                 </div>
+               </div>
+             </div>
           </div>
 
-          <div className={`bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0F172A] p-12 rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.3)] flex flex-col md:flex-row justify-between items-center gap-10 transition-all ${isDemoMode && demoStep === DemoStep.START_GEN ? 'ring-4 ring-orange-500 ring-offset-8 scale-[1.03]' : ''}`}>
-            <div className="text-left max-w-sm">
-              <h3 className="text-4xl font-black text-white mb-4 tracking-tighter">Initiate Engine</h3>
-              <p className="text-gray-400 font-bold text-lg leading-relaxed">Begin hyper-personalized solution synthesis for {uploadedFile?.rowCount || '0'} segments.</p>
-            </div>
-            <button 
-              onClick={startGeneration}
-              disabled={(!uploadedFile || !prompt || isGenerating) && !isDemoMode}
-              className="px-16 py-8 bg-orange-500 text-white rounded-[2.5rem] font-black text-2xl hover:bg-orange-600 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-4 shadow-[0_20px_50px_-10px_rgba(249,115,22,0.5)] disabled:opacity-50 disabled:grayscale"
-            >
-              {isGenerating ? <Loader2 className="animate-spin" size={32} /> : <Sparkles size={32} />}
-              Execute Brief
-            </button>
+          <div className={`p-16 rounded-[5rem] bg-[#0F172A] shadow-2xl transition-all flex flex-col md:flex-row justify-between items-center gap-12 group ${isDemoMode && demoStep === DemoStep.START_GEN ? 'ring-8 ring-orange-500/20 scale-[1.03]' : ''}`}>
+             <div className="max-w-xs">
+                <h3 className="text-5xl font-black text-white mb-4 tracking-tighter">Initiate.</h3>
+                <p className="text-lg text-gray-400 font-bold leading-relaxed">Begin hyper-personalized solution synthesis for {uploadedFile?.rowCount || '0'} nodes.</p>
+             </div>
+             <button onClick={startGeneration} disabled={(!uploadedFile || !prompt || isGenerating) && !isDemoMode} className="px-16 py-10 bg-orange-primary text-white rounded-[3.5rem] font-black text-3xl hover:scale-105 active:scale-95 transition-all flex items-center gap-6 shadow-2xl disabled:opacity-50 disabled:grayscale">
+                {isGenerating ? <Loader2 className="animate-spin" size={40} /> : <Sparkles size={40} />}
+                Synthesize
+             </button>
           </div>
         </div>
       </div>
 
       {isGenerating && (
-        <div className="fixed inset-0 z-[200] bg-[#0F172A]/95 backdrop-blur-2xl flex flex-col items-center justify-center p-10 animate-in fade-in duration-700 text-center">
-           <div className="relative mb-12">
-              <div className="w-40 h-40 rounded-full border-[10px] border-orange-500/10 flex items-center justify-center">
-                 <Loader2 className="animate-spin text-orange-500" size={100} strokeWidth={1} />
+        <div className="fixed inset-0 z-[200] bg-[#0F172A]/98 backdrop-blur-3xl flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-700">
+           <div className="relative mb-16">
+              <div className="w-48 h-48 rounded-full border-[12px] border-orange-500/10 flex items-center justify-center">
+                 <Loader2 className="animate-spin text-orange-primary" size={120} strokeWidth={1} />
               </div>
               <div className="absolute inset-0 flex items-center justify-center">
-                 <Brain size={40} className="text-white animate-pulse" />
+                 <Brain size={48} className="text-white animate-pulse" />
               </div>
            </div>
-           <h2 className="text-[56px] font-black text-white mb-6 tracking-tighter leading-none">Strategizing Brief</h2>
-           <p className="text-2xl text-gray-400 font-medium max-w-2xl mb-12 leading-relaxed">Applying segment-specific psychological hooks and cross-referencing global BFSI compliance datasets...</p>
-           
-           <div className="w-full max-w-2xl bg-white/5 rounded-full h-4 overflow-hidden shadow-inner">
-              <div 
-                className="bg-gradient-to-r from-orange-400 via-orange-600 to-orange-400 h-full transition-all duration-500 shadow-[0_0_20px_rgba(249,115,22,0.6)]"
-                style={{ width: `${(generationResults.length / (uploadedFile?.rowCount || 1)) * 100}%` }}
-              />
+           <h2 className="text-[72px] font-black text-white mb-8 tracking-tighter leading-none">Strategizing...</h2>
+           <p className="text-3xl text-gray-400 font-medium max-w-3xl mb-16 leading-relaxed">Correlating audience metadata with global compliance heuristics and psychological trigger datasets.</p>
+           <div className="w-full max-w-3xl bg-white/5 rounded-full h-4 overflow-hidden shadow-inner">
+              <div className="bg-gradient-to-r from-orange-400 via-orange-600 to-orange-400 h-full transition-all duration-1000 shadow-[0_0_40px_rgba(249,115,22,0.6)]" style={{ width: `${(generationResults.length / (uploadedFile?.rowCount || 1)) * 100}%` }} />
            </div>
-           <p className="mt-8 text-sm font-black text-gray-500 uppercase tracking-[0.5em]">Synthesis Phase: {generationResults.length + 1} / {uploadedFile?.rowCount}</p>
+           <p className="mt-10 text-[10px] font-black text-gray-500 uppercase tracking-[0.5em]">Synthesis Core: {generationResults.length + 1} / {uploadedFile?.rowCount}</p>
         </div>
       )}
     </div>
