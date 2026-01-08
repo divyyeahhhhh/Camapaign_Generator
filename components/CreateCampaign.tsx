@@ -72,15 +72,17 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
     
     setError(null);
     setIsGenerating(true);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-    const model = 'gemini-3-flash-preview';
-
+    
     try {
       const results: GeneratedMessage[] = [];
       const limit = Math.min(dataToProcess.length, 10);
       
       for (let i = 0; i < limit; i++) {
         const customer = dataToProcess[i];
+        // Initialize right before making the call to ensure process.env is ready
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+        const model = 'gemini-3-flash-preview';
+
         const response = await ai.models.generateContent({
           model,
           contents: `Act as a Senior BFSI Strategist and Compliance Officer. 
@@ -125,11 +127,12 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
           tone: tone
         });
         setGenerationResults([...results]);
-        await sleep(200);
+        await sleep(150);
       }
       setCurrentStep('results');
     } catch (err: any) {
-      setError("Strategic Reasoning Engine Failure. Please check connectivity.");
+      console.error(err);
+      setError("Strategic Reasoning Engine Failure. Please check if API Key is set in your environment.");
     } finally {
       setIsGenerating(false);
     }
@@ -281,12 +284,6 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
                       {selectedMessage.content}
                     </div>
                   )}
-                  <div className="flex items-center gap-3">
-                    <span className="text-[14px] font-bold text-gray-700">Compliance Status:</span>
-                    <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-green-50 text-green-600 rounded-full text-[13px] font-bold border border-green-100">
-                      <Check size={14} strokeWidth={3} /> {selectedMessage.complianceScore}% Compliant
-                    </span>
-                  </div>
                 </div>
 
                 <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)]">
@@ -324,7 +321,6 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
                           <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                             <div className="h-full bg-green-500 rounded-full transition-all duration-1000" style={{ width: `${selectedMessage.aiConfidence}%` }}></div>
                           </div>
-                          <p className="text-[14px] text-gray-400 font-medium">High Confidence - The AI is very confident about this decision based on regulatory datasets.</p>
                         </div>
 
                         <div className="pt-8 border-t border-gray-50">
@@ -345,16 +341,6 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
                           <p className="text-[16px] text-[#334155] leading-relaxed font-medium">
                             {selectedMessage.strategyLogic}
                           </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-8">
-                           <div className="p-6 border border-gray-100 rounded-2xl bg-gray-50/50">
-                              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Applied Tone</p>
-                              <p className="text-[17px] font-bold text-[#0F172A]">{selectedMessage.tone}</p>
-                           </div>
-                           <div className="p-6 border border-gray-100 rounded-2xl bg-gray-50/50">
-                              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Customer Insight</p>
-                              <p className="text-[17px] font-bold text-[#0F172A]">High Convergency Potential</p>
-                           </div>
                         </div>
                       </div>
                     )}
@@ -463,7 +449,6 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
                     placeholder="Example: Generate a personalized credit card offer highlighting cashback benefits for each customer in the CSV..."
                     className="w-full h-44 p-7 rounded-xl border border-gray-200 bg-white outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-all text-[16px] font-medium text-gray-900 placeholder:text-gray-300 shadow-inner"
                   />
-                  <p className="text-[14px] text-gray-500 font-medium mt-3 leading-relaxed">Describe what you want the AI to generate for each customer. The CSV data will be used to personalize the content through our reasoning hub.</p>
                 </div>
 
                 <div className="space-y-6">
@@ -486,7 +471,6 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack, isDemoMode = fa
 
           {/* Start CTA */}
           <div className="bg-[#F97316] rounded-2xl p-12 flex flex-col md:flex-row items-center justify-between shadow-2xl shadow-orange-200 overflow-hidden relative group">
-             <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
              <div className="relative z-10">
                 <h3 className="text-[28px] font-extrabold text-[#0F172A] mb-1">Ready to Generate?</h3>
                 <p className="text-[18px] text-white font-medium opacity-90">Review your settings and start the campaign generation</p>

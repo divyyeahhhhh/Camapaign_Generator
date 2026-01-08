@@ -2,17 +2,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIContentRequest, AIContentResult } from "../types.ts";
 
-const getAI = () => {
-  // Safety check for environment variables to prevent WSoD during boot
-  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
-  if (!apiKey) {
-    console.warn("API Key missing. Gemini features will be disabled.");
-  }
-  return new GoogleGenAI({ apiKey: apiKey as string });
-};
-
 export const generateMarketingContent = async (request: AIContentRequest): Promise<AIContentResult> => {
-  const ai = getAI();
+  // Create instance right before making the call as per SDK guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   const model = "gemini-3-flash-preview";
   
   const prompt = `
@@ -56,7 +48,7 @@ export const generateMarketingContent = async (request: AIContentRequest): Promi
 };
 
 export const analyzeLeadStrategy = async (leadData: string): Promise<string> => {
-  const ai = getAI();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   const model = "gemini-3-flash-preview";
 
   try {

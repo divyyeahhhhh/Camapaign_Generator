@@ -311,7 +311,7 @@ const App: React.FC = () => {
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
     setAuthMode('landing');
-    // If the user was trying to go somewhere specific (like Create Campaign), take them there immediately
+    // Critical fix: If the user was trying to go to 'Create Campaign', bypass dashboard.
     if (intendedView) {
       setCurrentView(intendedView);
       setIntendedView(null);
