@@ -12,8 +12,7 @@ import {
   Check,
   Shield,
   MessageSquare,
-  Eye,
-  AlertCircle
+  Eye
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -62,8 +61,12 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack }) => {
     setIsGenerating(true);
     
     try {
-      // Create AI instance inside the handler to ensure fresh environment variable access
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        throw new Error("STRATEGIC_KEY_NOT_FOUND: The Strategic Engine requires an API key to be set in the production environment.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const model = 'gemini-3-flash-preview';
       const results: GeneratedMessage[] = [];
       const limit = Math.min(dataToProcess.length, 10);
@@ -102,44 +105,42 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack }) => {
             }
           });
 
+          // Use .text as a property
           const text = response.text;
-          if (text) {
-            const data = JSON.parse(text);
-            results.push({
-              customerId: customer.customerId || customer.customer_id || `CUST${i+1}`,
-              customerName: customer.name || `Customer ${i+1}`,
-              rowNumber: i + 1,
-              subject: data.subject,
-              content: data.content,
-              complianceScore: data.complianceScore,
-              aiConfidence: data.aiConfidence,
-              complianceAnalysis: data.complianceAnalysis,
-              strategyLogic: data.strategyLogic,
-              tone: tone
-            });
-            setGenerationResults([...results]);
-          }
-        } catch (innerError: any) {
-          console.error(`Strategic Engine failed for row ${i+1}:`, innerError);
-          // If we hit an auth error, stop the loop and notify user
-          if (innerError.message?.includes('401') || innerError.message?.includes('API_KEY')) {
-            throw new Error("API Authentication Failure. Please verify your environment configuration.");
-          }
+          if (!text) continue;
+
+          const data = JSON.parse(text);
+          results.push({
+            customerId: customer.customerId || customer.customer_id || `CUST${i+1}`,
+            customerName: customer.name || `Customer ${i+1}`,
+            rowNumber: i + 1,
+            subject: data.subject,
+            content: data.content,
+            complianceScore: data.complianceScore,
+            aiConfidence: data.aiConfidence,
+            complianceAnalysis: data.complianceAnalysis,
+            strategyLogic: data.strategyLogic,
+            tone: tone
+          });
+          
+          setGenerationResults([...results]);
+        } catch (innerError) {
+          console.error(`Row ${i+1} Generation Failed:`, innerError);
         }
         
-        // Pacing to prevent rate limiting
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 150));
       }
       
       if (results.length > 0) {
         setCurrentStep('results');
       } else {
-        throw new Error("Zero messages generated. Please check your prompt and data format.");
+        throw new Error("ZERO_RESULTS: The engine was unable to synthesize any compliant messages.");
       }
 
     } catch (err: any) {
-      console.error("Critical Engine Failure:", err);
-      setError(err.message || "An unexpected error occurred during synthesis.");
+      console.error("Critical Strategic Failure:", err);
+      setError(err.message || "An unexpected error occurred during generation.");
+      alert(err.message || "Strategic Reasoning Engine Failure.");
     } finally {
       setIsGenerating(false);
     }
@@ -150,21 +151,16 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack }) => {
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        try {
-          const data = event.target?.result;
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(sheet) as CustomerData[];
-          setUploadedFile({ 
-            name: file.name, 
-            rowCount: jsonData.length, 
-            data: jsonData, 
-            columns: jsonData.length > 0 ? Object.keys(jsonData[0]) : [] 
-          });
-          setError(null);
-        } catch (e) {
-          setError("Failed to parse file. Please upload a valid CSV or XLSX.");
-        }
+        const data = event.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(sheet) as CustomerData[];
+        setUploadedFile({ 
+          name: file.name, 
+          rowCount: jsonData.length, 
+          data: jsonData, 
+          columns: jsonData.length > 0 ? Object.keys(jsonData[0]) : [] 
+        });
       };
       reader.readAsBinaryString(file);
     }
@@ -177,63 +173,57 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack }) => {
 
     return (
       <div className="min-h-screen bg-[#F8FAFC] pb-20 animate-in fade-in duration-500">
-        <header className="px-10 py-6 border-b border-gray-100 bg-white flex justify-between items-center mb-12 sticky top-0 z-20">
+        <header className="px-10 py-6 border-b border-gray-100 bg-white flex justify-between items-center mb-12">
           <button onClick={() => setCurrentStep('config')} className="flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">
             <ArrowLeft size={16} /> Back to Configuration
           </button>
-          <div className="text-sm font-bold text-gray-800 tracking-tight">Strategic Review Board</div>
+          <div className="text-sm font-bold text-gray-800">Review Logic</div>
         </header>
 
         <div className="max-w-[1440px] mx-auto px-10">
           <div className="mb-12">
-            <h1 className="text-[44px] font-extrabold text-[#0F172A] mb-2 tracking-tight">Campaign Intelligence Report</h1>
+            <h1 className="text-[44px] font-bold text-[#0F172A] mb-2 tracking-tight">Review Generated Campaign</h1>
             <p className="text-[18px] text-gray-500 font-medium">
-              {generationResults.length} personalized messages synthesized with {avgScore}% average compliance
+              {generationResults.length} messages synthesized with {avgScore}% average compliance
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
             {[
-              { label: 'Total Sync', value: generationResults.length, color: 'text-[#0F172A]' },
-              { label: 'Verified', value: generationResults.filter(r => r.complianceScore >= 90).length, color: 'text-green-600' },
-              { label: 'Flagged', value: generationResults.filter(r => r.complianceScore < 90).length, color: 'text-orange-500' },
-              { label: 'Logic Score', value: `${avgScore}%`, color: 'text-[#F97316]' }
+              { label: 'Total', value: generationResults.length, color: 'text-[#0F172A]' },
+              { label: 'Passed', value: generationResults.filter(r => r.complianceScore >= 90).length, color: 'text-green-600' },
+              { label: 'Review', value: generationResults.filter(r => r.complianceScore < 90).length, color: 'text-orange-500' },
+              { label: 'Score', value: `${avgScore}%`, color: 'text-[#F97316]' }
             ].map((stat, i) => (
-              <div key={i} className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
-                <p className="text-[14px] font-bold text-gray-400 uppercase tracking-widest mb-4">{stat.label}</p>
-                <p className={`text-[44px] font-black ${stat.color}`}>{stat.value}</p>
+              <div key={i} className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
+                <p className="text-[15px] font-medium text-gray-500 mb-4">{stat.label}</p>
+                <p className={`text-[44px] font-bold ${stat.color}`}>{stat.value}</p>
               </div>
             ))}
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-10">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <table className="w-full text-left">
               <thead className="bg-[#F8FAFC] border-b border-gray-100">
                 <tr>
-                  <th className="px-10 py-6 text-[14px] font-bold text-gray-400 uppercase tracking-wider">Customer Persona</th>
-                  <th className="px-10 py-6 text-[14px] font-bold text-gray-400 uppercase tracking-wider">Copy Snippet</th>
-                  <th className="px-10 py-6 text-[14px] font-bold text-gray-400 uppercase tracking-wider">Compliance</th>
-                  <th className="px-10 py-6 text-[14px] font-bold text-gray-400 uppercase tracking-wider text-right">Audit</th>
+                  <th className="px-10 py-6 text-[14px] font-bold text-gray-500">Customer</th>
+                  <th className="px-10 py-6 text-[14px] font-bold text-gray-500">Preview</th>
+                  <th className="px-10 py-6 text-[14px] font-bold text-gray-500">Compliance</th>
+                  <th className="px-10 py-6 text-[14px] font-bold text-gray-500 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {generationResults.map((res, i) => (
-                  <tr key={i} className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="px-10 py-8 font-bold text-[#0F172A] text-[16px]">{res.customerName}</td>
-                    <td className="px-10 py-8 text-[15px] text-gray-500 line-clamp-1 max-w-lg font-medium">{res.content}</td>
+                  <tr key={i} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-10 py-8 font-bold text-[#0F172A]">{res.customerName}</td>
+                    <td className="px-10 py-8 text-[15px] text-gray-600 line-clamp-1">{res.content}</td>
                     <td className="px-10 py-8">
-                      <div className="flex items-center gap-2">
-                         <div className={`w-2 h-2 rounded-full ${res.complianceScore >= 90 ? 'bg-green-500' : 'bg-orange-500'}`}></div>
-                         <span className="text-[14px] font-bold text-gray-700">{res.complianceScore}%</span>
-                      </div>
+                      <span className={`px-4 py-1.5 rounded-full text-[13px] font-bold ${res.complianceScore >= 90 ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>
+                        {res.complianceScore}%
+                      </span>
                     </td>
                     <td className="px-10 py-8 text-right">
-                      <button 
-                        onClick={() => { setSelectedMessage(res); setEditedContent(res.content); setIsEditing(false); }} 
-                        className="text-[#F97316] font-bold text-sm bg-orange-50 px-4 py-2 rounded-lg hover:bg-[#F97316] hover:text-white transition-all"
-                      >
-                        View Logic
-                      </button>
+                      <button onClick={() => { setSelectedMessage(res); setEditedContent(res.content); setIsEditing(false); }} className="text-[#F97316] font-bold text-sm">Review</button>
                     </td>
                   </tr>
                 ))}
@@ -243,41 +233,28 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack }) => {
         </div>
 
         {selectedMessage && (
-          <div className="fixed inset-0 z-[100] bg-[#0F172A]/80 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-300">
-            <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
-              <div className="px-10 py-8 border-b border-gray-100 flex justify-between items-center">
-                <div>
-                   <h2 className="text-[24px] font-black text-[#0F172A] tracking-tight">Synthesis Audit</h2>
-                   <p className="text-[14px] text-gray-500 font-bold uppercase tracking-widest">{selectedMessage.customerName}</p>
-                </div>
-                <button onClick={() => setSelectedMessage(null)} className="p-3 hover:bg-gray-100 rounded-full transition-colors"><X size={28} /></button>
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-8">
+            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+              <div className="px-10 py-7 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-[22px] font-bold text-[#0F172A]">{selectedMessage.customerName} - Analysis</h2>
+                <button onClick={() => setSelectedMessage(null)} className="p-2 hover:bg-gray-100 rounded-xl"><X size={26} /></button>
               </div>
-              <div className="p-10 overflow-y-auto space-y-12">
-                <div className="space-y-6">
+              <div className="p-10 overflow-y-auto space-y-10">
+                <div className="space-y-5">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[18px] font-bold text-[#0F172A]">Synthesized Copy</h4>
-                    <button onClick={() => setIsEditing(!isEditing)} className="text-sm font-bold text-[#F97316] underline">{isEditing ? 'Cancel Edit' : 'Edit Copy'}</button>
+                    <h4 className="text-[17px] font-bold text-[#0F172A]">Generated Content</h4>
+                    <button onClick={() => isEditing ? setIsEditing(false) : setIsEditing(true)} className="px-4 py-2 border rounded-xl text-sm font-bold">{isEditing ? 'Save' : 'Edit'}</button>
                   </div>
                   {isEditing ? (
-                    <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} className="w-full h-44 p-6 rounded-2xl border-2 border-orange-100 outline-none focus:border-orange-500 font-medium" />
+                    <textarea value={editedContent} onChange={(e) => setEditedContent(e.target.value)} className="w-full h-40 p-6 rounded-xl border" />
                   ) : (
-                    <div className="bg-gray-50 p-8 rounded-2xl text-[17px] text-gray-700 leading-relaxed font-medium border border-gray-100">{selectedMessage.content}</div>
+                    <div className="bg-gray-50 p-8 rounded-xl text-[16px] text-gray-600 font-medium">{selectedMessage.content}</div>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <div className="bg-[#F8FAFC] border border-gray-100 rounded-2xl p-8">
-                      <h4 className="text-[17px] font-bold mb-4 flex items-center gap-2 text-[#0F172A]"><Brain size={20} className="text-indigo-600" /> Persona Logic</h4>
-                      <p className="text-[15px] leading-relaxed text-gray-600 font-medium italic">"{selectedMessage.strategyLogic}"</p>
-                   </div>
-                   <div className="bg-[#F0FDF4] border border-green-100 rounded-2xl p-8">
-                      <h4 className="text-[17px] font-bold mb-4 flex items-center gap-2 text-[#0F172A]"><Shield size={20} className="text-green-600" /> Compliance Note</h4>
-                      <p className="text-[15px] leading-relaxed text-gray-600 font-medium italic">"{selectedMessage.complianceAnalysis}"</p>
-                   </div>
+                <div className="bg-[#F8FAFC] border border-gray-100 rounded-2xl p-8">
+                  <h4 className="text-[19px] font-bold mb-6 flex items-center gap-2"><Brain size={20} /> Strategic Reasoning</h4>
+                  <p className="text-[15px] leading-relaxed text-gray-600">{selectedMessage.strategyLogic}</p>
                 </div>
-              </div>
-              <div className="p-10 border-t border-gray-100 flex justify-end gap-4 bg-gray-50">
-                 <button onClick={() => setSelectedMessage(null)} className="px-8 py-3 font-bold text-gray-500 hover:text-gray-900">Close Audit</button>
-                 <button className="px-8 py-3 bg-[#F97316] text-white rounded-xl font-bold shadow-lg shadow-orange-100">Approve Message</button>
               </div>
             </div>
           </div>
@@ -290,133 +267,100 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({ onBack }) => {
     <div className="min-h-screen bg-[#F8FAFC] pb-20 font-sans animate-in fade-in duration-700">
       <header className="px-10 py-6 border-b border-gray-100 bg-white flex justify-between items-center mb-12 sticky top-0 z-20 shadow-sm">
         <button onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-[#F97316] transition-colors">
-          <ArrowLeft size={16} /> Exit Workspace
+          <ArrowLeft size={16} /> Exit Creation
         </button>
-        <div className="text-sm font-black text-gray-400 uppercase tracking-widest">Newgen Strategic Studio</div>
+        <div className="text-sm font-bold text-gray-800">Campaign Builder</div>
       </header>
 
       <div className="max-w-[1440px] mx-auto px-10">
         <div className="mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-50 border border-orange-100 mb-6">
             <Sparkles size={14} className="text-[#F97316]" />
-            <span className="text-[12px] font-black text-[#F97316] uppercase tracking-[0.2em]">Strategic Mode Active</span>
+            <span className="text-[12px] font-bold text-[#F97316] uppercase tracking-widest">Diagnostic Check: Connected</span>
           </div>
-          <h1 className="text-[64px] font-black text-[#0F172A] mb-3 tracking-tighter leading-none">Campaign Builder</h1>
-          <p className="text-[21px] text-gray-400 font-medium max-w-2xl">Fuel your high-stakes marketing with precision reasoning and automated compliance.</p>
+          <h1 className="text-[52px] font-bold text-[#0F172A] mb-3 tracking-tighter leading-none">New Compliant Campaign</h1>
+          <p className="text-[21px] text-gray-500 font-medium">Power your personalization with the Strategic Reasoning Engine.</p>
         </div>
 
-        {error && (
-          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-4 text-red-600 animate-in slide-in-from-top-2">
-            <AlertCircle size={24} />
-            <p className="font-bold">{error}</p>
-          </div>
-        )}
-
         <div className="space-y-10">
-          <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-12 transition-all hover:shadow-md">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12">
             <div className="flex justify-between items-start mb-12">
-              <div className="flex items-start gap-8">
-                <span className="w-16 h-16 bg-[#FFEDD5] text-[#F97316] rounded-2xl flex items-center justify-center text-[28px] font-black shadow-inner">1</span>
+              <div className="flex items-start gap-6">
+                <span className="w-12 h-12 bg-[#FFEDD5] text-[#F97316] rounded-xl flex items-center justify-center text-[24px] font-bold">1</span>
                 <div>
-                  <h2 className="text-[32px] font-black text-[#0F172A] mb-2 tracking-tight">Lead Matrix</h2>
-                  <p className="text-[18px] text-gray-400 font-medium">Inject your audience dataset (CSV/XLSX).</p>
+                  <h2 className="text-[26px] font-bold text-[#0F172A] mb-2">Upload Lead Matrix</h2>
+                  <p className="text-[17px] text-gray-500 font-medium">Supports CSV and XLSX formats.</p>
                 </div>
               </div>
             </div>
 
             {!uploadedFile ? (
-              <div onClick={() => fileInputRef.current?.click()} className="border-4 border-dashed border-gray-100 rounded-[2rem] p-24 text-center cursor-pointer hover:bg-orange-50/10 hover:border-orange-200 transition-all group">
+              <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-2xl p-24 text-center cursor-pointer hover:bg-orange-50/5 group">
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".csv,.xlsx" />
-                <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform">
-                   <UploadIcon size={32} className="text-[#F97316]" />
-                </div>
-                <p className="text-[22px] font-bold text-gray-300">Drop lead matrix file here</p>
-                <p className="text-sm font-bold text-gray-400 mt-2 uppercase tracking-widest">or click to browse</p>
+                <UploadIcon size={32} className="mx-auto text-[#F97316] mb-6" />
+                <p className="text-[20px] font-bold text-gray-400">Click to upload lead data</p>
               </div>
             ) : (
-              <div className="bg-[#F0FDF4] border border-[#DCFCE7] p-10 rounded-[2rem] flex items-center justify-between animate-in zoom-in-95">
-                <div className="flex items-center gap-8">
-                  <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-green-100">
-                    <Check size={36} strokeWidth={3} />
-                  </div>
+              <div className="bg-green-50 border border-green-100 p-8 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <Check className="text-green-600" size={32} />
                   <div>
-                    <h4 className="text-[22px] font-black text-[#0F172A] mb-1">{uploadedFile.name}</h4>
-                    <p className="text-[14px] text-green-700 font-black uppercase tracking-[0.25em]">{uploadedFile.rowCount} Nodes Mapped</p>
+                    <h4 className="text-[18px] font-bold">{uploadedFile.name}</h4>
+                    <p className="text-[14px] text-green-700 font-bold">{uploadedFile.rowCount} Rows Ready</p>
                   </div>
                 </div>
-                <button onClick={() => setUploadedFile(null)} className="p-4 hover:bg-white rounded-2xl text-gray-300 hover:text-red-500 transition-all shadow-sm"><X size={28} /></button>
+                <button onClick={() => setUploadedFile(null)} className="text-gray-400 hover:text-red-500 transition-colors"><X size={24} /></button>
               </div>
             )}
           </div>
 
-          <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-12 transition-all hover:shadow-md">
-            <div className="flex items-start gap-8 mb-12">
-              <span className="w-16 h-16 bg-[#FFEDD5] text-[#F97316] rounded-2xl flex items-center justify-center text-[28px] font-black shadow-inner">2</span>
-              <div>
-                 <h2 className="text-[32px] font-black text-[#0F172A] mb-2 tracking-tight">Campaign Thesis</h2>
-                 <p className="text-[18px] text-gray-400 font-medium">Define your strategic objective and tone.</p>
-              </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12">
+            <div className="flex items-start gap-6 mb-12">
+              <span className="w-12 h-12 bg-[#FFEDD5] text-[#F97316] rounded-xl flex items-center justify-center text-[24px] font-bold">2</span>
+              <h2 className="text-[26px] font-bold text-[#0F172A]">Campaign Goal</h2>
             </div>
-            <div className="space-y-12">
-              <div className="space-y-4">
-                 <label className="text-[14px] font-black text-gray-400 uppercase tracking-widest ml-1">Strategic Prompt</label>
-                 <textarea 
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="e.g. Synthesize a wealth management offer focusing on high-yield bonds for middle-aged professionals..."
-                    className="w-full h-44 p-8 rounded-[2rem] border-2 border-gray-100 outline-none focus:border-orange-500 transition-all font-medium text-[18px] text-[#0F172A] placeholder:text-gray-200 bg-gray-50/30"
-                 />
-              </div>
-              <div className="space-y-6">
-                <label className="text-[14px] font-black text-gray-400 uppercase tracking-widest ml-1">Vocal Profile</label>
-                <div className="flex gap-6">
-                  {['Professional', 'Friendly', 'Urgent'].map(t => (
-                    <button 
-                      key={t}
-                      onClick={() => setTone(t)}
-                      className={`flex-1 py-6 rounded-[1.5rem] border-2 font-black text-[16px] uppercase tracking-widest transition-all ${tone === t ? 'bg-[#F97316] text-white border-[#F97316] shadow-xl shadow-orange-100 scale-[1.03]' : 'bg-white text-gray-300 border-gray-50 hover:border-gray-200'}`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
+            <div className="space-y-10">
+              <textarea 
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Describe your marketing objective..."
+                className="w-full h-40 p-6 rounded-xl border border-gray-200 focus:ring-1 focus:ring-orange-500 transition-all font-medium"
+              />
+              <div className="flex gap-4">
+                {['Professional', 'Friendly', 'Urgent'].map(t => (
+                  <button 
+                    key={t}
+                    onClick={() => setTone(t)}
+                    className={`flex-1 py-4 rounded-xl border-2 font-bold transition-all ${tone === t ? 'bg-[#F97316] text-white border-[#F97316]' : 'bg-white text-gray-500 border-gray-100'}`}
+                  >
+                    {t}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
-          <div className="bg-[#0F172A] rounded-[2.5rem] p-12 flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden group">
-             <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
-             <div className="relative z-10">
-                <h3 className="text-[32px] font-black text-white mb-2 tracking-tight">Execute Synthesis?</h3>
-                <p className="text-[18px] text-gray-400 font-medium">Reasoning cycles will prioritize high compliance standards.</p>
+          <div className="bg-[#F97316] rounded-2xl p-10 flex flex-col md:flex-row items-center justify-between shadow-xl">
+             <div className="text-white">
+                <h3 className="text-[26px] font-bold mb-1">Begin Reasoning Loop?</h3>
+                <p className="text-[17px] opacity-90">Engine will synthesize compliant messages.</p>
              </div>
              <button 
                 onClick={startGeneration}
                 disabled={!uploadedFile || !prompt || isGenerating}
-                className="mt-8 md:mt-0 px-12 py-5 bg-[#F97316] text-white rounded-2xl font-black text-[18px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-orange-900/40 disabled:opacity-50 disabled:grayscale relative z-10"
+                className="mt-6 md:mt-0 px-12 py-4 bg-white text-[#F97316] rounded-xl font-bold text-[18px] shadow-lg disabled:opacity-50"
              >
-                {isGenerating ? <Loader2 className="animate-spin" /> : 'Start Engine'}
+                {isGenerating ? 'Synthesizing...' : 'Start Synthesis'}
              </button>
           </div>
         </div>
       </div>
 
       {isGenerating && (
-        <div className="fixed inset-0 z-[200] bg-[#0F172A]/95 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-500">
-           <div className="w-48 h-48 rounded-full border-[10px] border-orange-500/10 flex items-center justify-center mb-16 relative">
-              <Loader2 className="animate-spin text-[#F97316] absolute" size={120} strokeWidth={1.5} />
-              <Brain size={48} className="text-white animate-pulse" />
-           </div>
-           <h2 className="text-[64px] font-black text-white mb-6 tracking-tighter">Strategic Cycle Active</h2>
-           <p className="text-[22px] text-gray-400 max-w-2xl leading-relaxed font-medium">
-             Synthesizing {generationResults.length} / {uploadedFile?.rowCount} compliant marketing personas.
-           </p>
-           <div className="w-full max-w-lg bg-white/5 h-2 rounded-full mt-12 overflow-hidden border border-white/10">
-              <div 
-                className="h-full bg-[#F97316] transition-all duration-500 shadow-[0_0_20px_#F97316]" 
-                style={{ width: `${(generationResults.length / (uploadedFile?.rowCount || 1)) * 100}%` }}
-              />
-           </div>
+        <div className="fixed inset-0 z-[200] bg-[#0F172A]/90 backdrop-blur-md flex flex-col items-center justify-center p-12 text-center">
+           <Loader2 className="animate-spin text-[#F97316] mb-8" size={64} />
+           <h2 className="text-[48px] font-bold text-white mb-4">Strategic Cycle Active</h2>
+           <p className="text-[20px] text-gray-400 max-w-2xl">Ensuring compliant personalization for every profile in your lead matrix.</p>
         </div>
       )}
     </div>
