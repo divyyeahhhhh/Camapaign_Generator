@@ -4,11 +4,17 @@ import { AIContentRequest, AIContentResult } from "../types.ts";
 
 /**
  * Service to handle the Strategic Reasoning Engine.
- * Moves complex AI logic away from the UI components.
+ * Consolidated logic for BFSI campaign generation.
  */
 export const generateCampaignMessage = async (customer: any, prompt: string, tone: string) => {
-  // Initialize right before call to ensure environment variables are available
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  // Defensive initialization for production environments
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.error("CRITICAL: Strategic Engine API Key is missing in this environment.");
+    throw new Error("AUTH_KEY_MISSING");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   const model = 'gemini-3-flash-preview';
 
   const contents = `Act as a Senior BFSI Strategist and Compliance Officer. 
@@ -44,19 +50,22 @@ export const generateCampaignMessage = async (customer: any, prompt: string, ton
       }
     });
 
-    // property access per guidelines
+    // property access per SDK guidelines
     const text = response.text;
     if (!text) throw new Error("EMPTY_STRATEGIC_RESPONSE");
     
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("Gemini Service Error:", error);
+    console.error("Strategic Engine Row Execution Error:", error);
     throw error;
   }
 };
 
 export const generateMarketingContent = async (request: AIContentRequest): Promise<AIContentResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("Strategic API Key required");
+
+  const ai = new GoogleGenAI({ apiKey });
   const model = "gemini-3-flash-preview";
   
   const prompt = `Generate professional BFSI marketing content: ${request.prompt}. Tone: ${request.tone}. Channel: ${request.channel}.`;
@@ -81,24 +90,28 @@ export const generateMarketingContent = async (request: AIContentRequest): Promi
 
     return JSON.parse(result.text || '{}') as AIContentResult;
   } catch (error) {
-    console.error("AI Generation Error:", error);
+    console.error("Marketing Content Hub Error:", error);
     throw error;
   }
 };
 
 export const analyzeLeadStrategy = async (leadData: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) return "Strategic engine key missing.";
+
+  const ai = new GoogleGenAI({ apiKey });
   const model = "gemini-3-flash-preview";
 
   try {
     const result = await ai.models.generateContent({
       model,
-      contents: `Analyze this lead info for BFSI strategy: ${leadData}`,
-      config: { systemInstruction: "Be concise and professional." }
+      contents: `Analyze this lead info for BFSI strategy and suggest follow-up steps: ${leadData}`,
+      config: { systemInstruction: "You are a senior banking advisor. Be concise, ethical, and professional." }
     });
 
-    return result.text || "No strategy available.";
+    return result.text || "No strategy available at this time.";
   } catch (error) {
+    console.error("Lead Strategy Analysis Error:", error);
     return "Strategic engine temporarily offline.";
   }
 };
