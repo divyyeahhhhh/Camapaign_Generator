@@ -3,14 +3,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AIContentRequest, AIContentResult } from "../types.ts";
 
 export const generateMarketingContent = async (request: AIContentRequest): Promise<AIContentResult> => {
-  // Defensive check for API Key
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY_MISSING: The strategic engine requires an active API key in the environment.");
-  }
-
-  // Initialize right before use to ensure environment variables are captured
-  const ai = new GoogleGenAI({ apiKey });
+  // Use API key directly from process.env as per guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   const model = "gemini-3-flash-preview";
   
   const prompt = `
@@ -19,7 +13,7 @@ export const generateMarketingContent = async (request: AIContentRequest): Promi
     Target/Context: ${request.prompt}
     Tone: ${request.tone}
     
-    Ensure the content is compliant with financial regulations.
+    Ensure the content is compliant with financial regulations. Return JSON.
   `;
 
   try {
@@ -44,22 +38,18 @@ export const generateMarketingContent = async (request: AIContentRequest): Promi
       }
     });
 
-    // Access .text as a property, not a method
     const text = result.text;
-    if (!text) throw new Error("EMPTY_AI_RESPONSE");
+    if (!text) throw new Error("No text returned from Strategic Engine.");
     
     return JSON.parse(text) as AIContentResult;
   } catch (error) {
-    console.error("AI Generation Critical Error:", error);
+    console.error("AI Content Studio Error:", error);
     throw error;
   }
 };
 
 export const analyzeLeadStrategy = async (leadData: string): Promise<string> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) return "Strategic engine key missing.";
-
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   const model = "gemini-3-flash-preview";
 
   try {
@@ -71,10 +61,9 @@ export const analyzeLeadStrategy = async (leadData: string): Promise<string> => 
       }
     });
 
-    // Access .text as a property
     return result.text || "Unable to analyze at this time.";
   } catch (error) {
-    console.error("Lead Analysis Critical Error:", error);
+    console.error("Lead Strategy Error:", error);
     return "Strategic engine temporarily offline.";
   }
 };
